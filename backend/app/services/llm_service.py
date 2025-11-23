@@ -5,7 +5,6 @@ import os
 from typing import Dict, Any, Optional
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 
 
 class LLMService:
@@ -153,11 +152,16 @@ Keep it professional and constructive.""",
 # Code to Review:
 {code}"""
 
-            # Create chain
-            chain = LLMChain(llm=self.llm, prompt=self.analysis_prompt)
-
-            # Run analysis
-            result = chain.run(code=enhanced_code, filename=filename, language=language)
+            # Use new LangChain pattern (RunnableSequence) instead of deprecated LLMChain
+            # Format prompt with variables and use pipe operator
+            formatted_prompt = self.analysis_prompt.format(
+                code=enhanced_code, filename=filename, language=language
+            )
+            
+            # Use pipe operator: prompt | llm (replaces deprecated chain.run)
+            from langchain_core.messages import HumanMessage
+            message = HumanMessage(content=formatted_prompt)
+            result = self.llm.invoke([message]).content
 
             # Parse result (assuming JSON response)
             import json
@@ -189,13 +193,17 @@ Keep it professional and constructive.""",
             return "Code review completed. OpenAI API key not configured for detailed summary."
 
         try:
-            chain = LLMChain(llm=self.llm, prompt=self.summary_prompt)
-
-            summary = chain.run(
+            # Use new LangChain pattern instead of deprecated LLMChain
+            formatted_prompt = self.summary_prompt.format(
                 context=str(context),
                 issues_count=len(review_result.get("issues", [])),
                 suggestions_count=len(review_result.get("suggestions", [])),
             )
+            
+            # Use pipe operator: prompt | llm (replaces deprecated chain.run)
+            from langchain_core.messages import HumanMessage
+            message = HumanMessage(content=formatted_prompt)
+            summary = self.llm.invoke([message]).content
 
             return summary.strip()
 

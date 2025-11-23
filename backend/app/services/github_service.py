@@ -94,7 +94,8 @@ class GitHubService:
 
     def post_review_comments(self, pr_data: Dict, review_result: Dict) -> None:
         """
-        Post review comments to a pull request
+        Post review comments to a pull request as an issue comment
+        (Works with default GITHUB_TOKEN permissions in GitHub Actions)
 
         Args:
             pr_data: Pull request data from webhook
@@ -107,15 +108,11 @@ class GitHubService:
             repo = self.client.get_repo(repo_name)
             pr = repo.get_pull(pr_number)
 
-            # Create review comment body
-            comment_body = self._format_review_comment(review_result)
+            # Create review comment body with inline comments included
+            comment_body = self._format_review_comment(review_result, include_inline=True)
 
-            # Post review
-            pr.create_review(
-                body=comment_body,
-                event="COMMENT",
-                comments=self._create_inline_comments(review_result),
-            )
+            # Post as issue comment (works with default GITHUB_TOKEN permissions)
+            pr.create_issue_comment(comment_body)
 
         except Exception as e:
             raise Exception(f"Error posting review comments: {str(e)}")
@@ -140,7 +137,7 @@ class GitHubService:
         ext = os.path.splitext(filename)[1].lower()
         return extensions.get(ext, "unknown")
 
-    def _format_review_comment(self, review_result: Dict) -> str:
+    def _format_review_comment(self, review_result: Dict, include_inline: bool = False) -> str:
         """Format the review result into a markdown comment"""
         comment = "## 🤖 Automated Code Review\n\n"
 
@@ -155,6 +152,14 @@ class GitHubService:
                     "🔴" if severity == "HIGH" else "🟡" if severity == "MEDIUM" else "🔵"
                 )
                 comment += f"{emoji} **{severity}**: {issue.get('message')}\n"
+            comment += "\n"
+
+        # Include file-specific issues if available
+        if include_inline and review_result.get("file_issues"):
+            comment += "### File-Specific Issues\n\n"
+            for file_issue in review_result.get("file_issues", []):
+                if file_issue.get("file") and file_issue.get("line"):
+                    comment += f"**`{file_issue['file']}`** (line {file_issue['line']}): {file_issue.get('message', '')}\n"
             comment += "\n"
 
         if review_result.get("suggestions"):

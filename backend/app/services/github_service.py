@@ -2,6 +2,7 @@
 Service for handling GitHub operations
 """
 import os
+import requests
 from github import Github
 from typing import Dict, List, Any
 
@@ -12,6 +13,32 @@ class GitHubService:
     def __init__(self):
         self.token = os.getenv("GITHUB_TOKEN")
         self.client = Github(self.token) if self.token else None
+        
+    def _check_token_permissions(self, repo_name: str) -> Dict[str, Any]:
+        """
+        Check what permissions the token has
+        Returns a dict with permission info for debugging
+        """
+        try:
+            owner, repo = repo_name.split("/")
+            api_url = f"https://api.github.com/repos/{owner}/{repo}"
+            
+            headers = {
+                "Authorization": f"token {self.token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "PR-Reviewer-Action"
+            }
+            
+            # Check repository access
+            response = requests.get(api_url, headers=headers, timeout=10)
+            return {
+                "repo_access": response.status_code == 200,
+                "repo_status": response.status_code,
+                "token_present": bool(self.token),
+                "token_preview": f"{self.token[:10]}..." if self.token and len(self.token) > 10 else "None"
+            }
+        except Exception:
+            return {"error": "Could not check permissions"}
 
     def get_pull_request(self, owner: str, repo: str, pr_number: int) -> Dict:
         """
@@ -104,30 +131,65 @@ class GitHubService:
         try:
             repo_name = pr_data["base"]["repo"]["full_name"]
             pr_number = pr_data["number"]
-
-            repo = self.client.get_repo(repo_name)
             
+            # Verify PR number matches what we expect
+            if "number" in pr_data and pr_data["number"] != pr_number:
+                print(f"Warning: PR number mismatch. Expected {pr_number}, got {pr_data['number']}")
+
             # Create review comment body with inline comments included
             comment_body = self._format_review_comment(review_result, include_inline=True)
 
-            # Post as issue comment using the issue number (PRs are also issues)
-            # This method is more reliable than pr.create_issue_comment()
-            issue = repo.get_issue(pr_number)
-            issue.create_comment(comment_body)
+            # Try using REST API directly first (more reliable for permissions)
+            try:
+                owner, repo = repo_name.split("/")
+                api_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+                
+                headers = {
+                    "Authorization": f"token {self.token}",
+                    "Accept": "application/vnd.github.v3+json",
+                    "User-Agent": "PR-Reviewer-Action"
+                }
+                
+                response = requests.post(
+                    api_url,
+                    json={"body": comment_body},
+                    headers=headers,
+                    timeout=30
+                )
+                
+                if response.status_code == 201:
+                    return  # Success!
+                elif response.status_code == 403:
+                    error_data = response.json() if response.text else {}
+                    error_msg = error_data.get("message", "Forbidden")
+                    raise Exception(
+                        f"Permission denied (403): Unable to post comment on PR #{pr_number}.\n"
+                        f"Repository: {repo_name}\n"
+                        f"This usually means the workflow is missing required permissions.\n\n"
+                        f"SOLUTION: Add this to your workflow file under the job:\n\n"
+                        f"  permissions:\n"
+                        f"    issues: write\n"
+                        f"    pull-requests: read\n\n"
+                        f"If the PR is from a fork, you may need to use a Personal Access Token (PAT)\n"
+                        f"instead of GITHUB_TOKEN. See ACTION_README.md for details.\n\n"
+                        f"GitHub API error: {error_msg}"
+                    )
+                else:
+                    # If REST API fails, try PyGithub as fallback
+                    raise Exception(f"REST API returned {response.status_code}: {response.text}")
+                    
+            except requests.RequestException as e:
+                # Fallback to PyGithub if REST API fails
+                repo = self.client.get_repo(repo_name)
+                issue = repo.get_issue(pr_number)
+                issue.create_comment(comment_body)
 
         except Exception as e:
             error_msg = str(e)
             # Provide helpful error message for 403 errors
-            if "403" in error_msg or "Resource not accessible by integration" in error_msg:
-                raise Exception(
-                    f"Permission denied (403): Unable to post comment on PR #{pr_number}.\n"
-                    f"This usually means the workflow is missing required permissions.\n"
-                    f"Please add this to your workflow file under the job:\n\n"
-                    f"  permissions:\n"
-                    f"    issues: write\n"
-                    f"    pull-requests: read\n\n"
-                    f"Original error: {error_msg}"
-                )
+            if "403" in error_msg or "Resource not accessible by integration" in error_msg or "Permission denied" in error_msg:
+                # Error message already includes helpful info, just re-raise
+                raise
             raise Exception(f"Error posting review comments: {error_msg}")
 
     def _detect_language(self, filename: str) -> str:

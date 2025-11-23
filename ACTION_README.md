@@ -69,6 +69,8 @@ If you're getting a 403 error when the action tries to post comments:
 
 4. **Repository settings**: Check that your repository allows GitHub Actions to write to issues/comments in Settings → Actions → General → Workflow permissions.
 
+For more detailed troubleshooting, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
+
 ## Inputs
 
 | Input | Required | Default | Description |

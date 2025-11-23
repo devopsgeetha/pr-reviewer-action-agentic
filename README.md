@@ -49,18 +49,24 @@ jobs:
   review:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      pull-requests: write
       issues: write
-      pull-requests: read
     steps:
-      - name: Checkout code
+      - name: Checkout PR code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
       
       - name: AI PR Review
-        uses: meetgeetha/pr-reviewer-action@main
+        uses: meetgeetha/pr-reviewer-action@v1
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           openai_model: gpt-4-turbo-preview
+
 ```
 
 ### 3. Add Your API Key to Secrets

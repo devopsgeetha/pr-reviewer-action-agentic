@@ -2,41 +2,84 @@
 set -e
 
 # Get PR details from GitHub context
-# Handle different GITHUB_REF formats
+# Priority order:
+# 1. GITHUB_EVENT_PATH (most reliable for pull_request events)
+# 2. GITHUB_REF
+# 3. GITHUB_PR_NUMBER env var
+# 4. Default for testing
+
 PR_NUMBER=""
 
-if [[ "${GITHUB_REF}" == refs/pull/* ]]; then
-    PR_NUMBER="${GITHUB_REF#refs/pull/}"
-    PR_NUMBER="${PR_NUMBER%/merge}"
-fi
+# Debug: Show what we have
+echo "🔍 Debug: Extracting PR number..."
+echo "   GITHUB_EVENT_NAME: ${GITHUB_EVENT_NAME:-not set}"
+echo "   GITHUB_REF: ${GITHUB_REF:-not set}"
+echo "   GITHUB_EVENT_PATH: ${GITHUB_EVENT_PATH:-not set}"
 
-# Try to get PR number from event JSON if available
-if [[ -z "${PR_NUMBER}" && -n "${GITHUB_EVENT_PATH}" && -f "${GITHUB_EVENT_PATH}" ]]; then
-    PR_NUMBER=$(jq -r '.pull_request.number // .number // empty' "${GITHUB_EVENT_PATH}" 2>/dev/null || echo "")
-fi
-
-# Fallback to environment variable if set
-if [[ -z "${PR_NUMBER}" ]]; then
-    PR_NUMBER="${GITHUB_PR_NUMBER}"
-fi
-
-# For act testing, if still no PR number, try to get from GITHUB_REF or use default
-if [[ -z "${PR_NUMBER}" || "${PR_NUMBER}" == "%!f(<nil>)" ]]; then
-    # Try parsing GITHUB_REF one more time with different format
-    if [[ -n "${GITHUB_REF}" && "${GITHUB_REF}" =~ /([0-9]+) ]]; then
-        PR_NUMBER="${BASH_REMATCH[1]}"
-    else
-        # Default to 1 for testing with act
-        PR_NUMBER="1"
-        echo "Warning: PR_NUMBER not found, using default: ${PR_NUMBER} (for act testing)"
+# Method 1: Try to get PR number from event JSON (most reliable for pull_request events)
+if [[ -n "${GITHUB_EVENT_PATH}" && -f "${GITHUB_EVENT_PATH}" ]]; then
+    echo "   Attempting to read from GITHUB_EVENT_PATH..."
+    # Try with jq first
+    if command -v jq &> /dev/null; then
+        PR_NUMBER=$(jq -r '.pull_request.number // .number // empty' "${GITHUB_EVENT_PATH}" 2>/dev/null || echo "")
+        if [[ -n "${PR_NUMBER}" && "${PR_NUMBER}" != "null" && "${PR_NUMBER}" != "" ]]; then
+            echo "   ✅ Found PR number from event JSON (jq): ${PR_NUMBER}"
+        fi
     fi
+    
+    # If jq didn't work or PR_NUMBER is still empty, try with Python
+    if [[ -z "${PR_NUMBER}" || "${PR_NUMBER}" == "null" ]]; then
+        PR_NUMBER=$(python3 -c "
+import json
+import sys
+try:
+    with open('${GITHUB_EVENT_PATH}', 'r') as f:
+        data = json.load(f)
+        pr_num = data.get('pull_request', {}).get('number') or data.get('number')
+        if pr_num:
+            print(pr_num)
+except:
+    pass
+" 2>/dev/null || echo "")
+        if [[ -n "${PR_NUMBER}" && "${PR_NUMBER}" != "null" && "${PR_NUMBER}" != "" ]]; then
+            echo "   ✅ Found PR number from event JSON (Python): ${PR_NUMBER}"
+        fi
+    fi
+fi
+
+# Method 2: Try to get from GITHUB_REF
+if [[ -z "${PR_NUMBER}" || "${PR_NUMBER}" == "null" ]]; then
+    if [[ "${GITHUB_REF}" == refs/pull/* ]]; then
+        PR_NUMBER="${GITHUB_REF#refs/pull/}"
+        PR_NUMBER="${PR_NUMBER%/merge}"
+        echo "   ✅ Found PR number from GITHUB_REF: ${PR_NUMBER}"
+    elif [[ -n "${GITHUB_REF}" && "${GITHUB_REF}" =~ /([0-9]+) ]]; then
+        PR_NUMBER="${BASH_REMATCH[1]}"
+        echo "   ✅ Found PR number from GITHUB_REF (regex): ${PR_NUMBER}"
+    fi
+fi
+
+# Method 3: Try environment variable
+if [[ -z "${PR_NUMBER}" || "${PR_NUMBER}" == "null" ]]; then
+    if [[ -n "${GITHUB_PR_NUMBER}" ]]; then
+        PR_NUMBER="${GITHUB_PR_NUMBER}"
+        echo "   ✅ Found PR number from GITHUB_PR_NUMBER: ${PR_NUMBER}"
+    fi
+fi
+
+# Method 4: Fallback for testing (only if nothing else worked)
+if [[ -z "${PR_NUMBER}" || "${PR_NUMBER}" == "null" || "${PR_NUMBER}" == "%!f(<nil>)" ]]; then
+    PR_NUMBER="1"
+    echo "   ⚠️  Warning: PR_NUMBER not found, using default: ${PR_NUMBER} (for act testing)"
 fi
 
 # Ensure PR_NUMBER is a valid number
 if ! [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]; then
     PR_NUMBER="1"
-    echo "Warning: Invalid PR_NUMBER format, using default: ${PR_NUMBER}"
+    echo "   ⚠️  Warning: Invalid PR_NUMBER format '${PR_NUMBER}', using default: 1"
 fi
+
+echo "   📌 Final PR number: ${PR_NUMBER}"
 
 REPO="${GITHUB_REPOSITORY:-meetgeetha/pr-reviewer-action}"
 
@@ -73,14 +116,19 @@ if '/' not in repo_str:
 owner, repo = repo_str.split('/')
 
 pr_number_str = os.environ.get('PR_NUMBER', '')
+print(f'🔍 Python: PR_NUMBER env var = "{pr_number_str}"')
+
 if not pr_number_str or pr_number_str == '%!f(<nil>)' or pr_number_str.startswith('%') or pr_number_str == '${PR_NUMBER}':
     # Fallback for act testing
+    print('⚠️  Python: PR_NUMBER env var is empty or invalid, using default: 1')
     pr_number_str = '1'
 try:
     pr_number = int(pr_number_str)
+    print(f'✅ Python: Using PR number: {pr_number}')
 except (ValueError, TypeError) as e:
-    print('Error: Invalid PR number, using default: 1')
-    print('PR_NUMBER value was: ' + str(pr_number_str))
+    print(f'❌ Python: Error: Invalid PR number, using default: 1')
+    print(f'   PR_NUMBER value was: {pr_number_str}')
+    print(f'   Error: {e}')
     pr_number = 1
 
 # Fetch PR and review

@@ -132,17 +132,24 @@ class GitHubService:
             repo_name = pr_data["base"]["repo"]["full_name"]
             pr_number = pr_data["number"]
             
+            print(f"📝 Preparing to post review comment...")
+            print(f"   Repository: {repo_name}")
+            print(f"   PR Number: {pr_number}")
+            
             # Verify PR number matches what we expect
             if "number" in pr_data and pr_data["number"] != pr_number:
-                print(f"Warning: PR number mismatch. Expected {pr_number}, got {pr_data['number']}")
+                print(f"⚠️  Warning: PR number mismatch. Expected {pr_number}, got {pr_data['number']}")
 
             # Create review comment body with inline comments included
             comment_body = self._format_review_comment(review_result, include_inline=True)
+            print(f"   Comment length: {len(comment_body)} characters")
+            print(f"   Comment preview (first 200 chars): {comment_body[:200]}...")
 
             # Try using REST API directly first (more reliable for permissions)
             try:
                 owner, repo = repo_name.split("/")
                 api_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+                print(f"   API URL: {api_url}")
                 
                 headers = {
                     "Authorization": f"token {self.token}",
@@ -157,8 +164,34 @@ class GitHubService:
                     timeout=30
                 )
                 
-                if response.status_code == 201:
-                    return  # Success!
+                # Handle success status codes (201 Created is standard, but 200 OK might also occur)
+                if response.status_code in [200, 201]:
+                    try:
+                        response_data = response.json()
+                        comment_url = response_data.get("html_url", "N/A")
+                        comment_id = response_data.get("id", "N/A")
+                        print(f"✅ Comment posted successfully!")
+                        print(f"   Status code: {response.status_code}")
+                        print(f"   Comment ID: {comment_id}")
+                        print(f"   Comment URL: {comment_url}")
+                        print(f"   PR #{pr_number} in {repo_name}")
+                        print(f"   View PR: https://github.com/{repo_name}/pull/{pr_number}")
+                        
+                        # Verify the comment was actually created by fetching it back
+                        if comment_id and comment_id != "N/A":
+                            verify_url = f"https://api.github.com/repos/{owner}/{repo}/issues/comments/{comment_id}"
+                            verify_response = requests.get(verify_url, headers=headers, timeout=10)
+                            if verify_response.status_code == 200:
+                                print(f"   ✅ Verified: Comment exists and is accessible")
+                            else:
+                                print(f"   ⚠️  Warning: Could not verify comment (status {verify_response.status_code})")
+                        
+                        return  # Success!
+                    except Exception as parse_error:
+                        print(f"⚠️  Comment created but couldn't parse response: {parse_error}")
+                        print(f"   Response status: {response.status_code}")
+                        print(f"   Response text: {response.text[:500]}")
+                        return  # Still consider it success if status was 200/201
                 elif response.status_code == 403:
                     error_data = response.json() if response.text else {}
                     error_msg = error_data.get("message", "Forbidden")
@@ -175,14 +208,27 @@ class GitHubService:
                         f"GitHub API error: {error_msg}"
                     )
                 else:
-                    # If REST API fails, try PyGithub as fallback
+                    # Log the error and try PyGithub as fallback
+                    print(f"⚠️  REST API returned status {response.status_code}")
+                    print(f"   Response: {response.text[:200]}")
+                    print(f"   Attempting fallback to PyGithub...")
                     raise Exception(f"REST API returned {response.status_code}: {response.text}")
                     
-            except requests.RequestException as e:
+            except Exception as rest_error:
                 # Fallback to PyGithub if REST API fails
-                repo = self.client.get_repo(repo_name)
-                issue = repo.get_issue(pr_number)
-                issue.create_comment(comment_body)
+                print(f"⚠️  REST API failed: {str(rest_error)}")
+                print(f"   Attempting fallback to PyGithub...")
+                try:
+                    repo = self.client.get_repo(repo_name)
+                    issue = repo.get_issue(pr_number)
+                    comment = issue.create_comment(comment_body)
+                    print(f"✅ Comment posted successfully via PyGithub!")
+                    print(f"   Comment URL: {comment.html_url}")
+                    print(f"   PR #{pr_number} in {repo_name}")
+                    return
+                except Exception as pygithub_error:
+                    # If both fail, raise the original REST API error
+                    raise rest_error
 
         except Exception as e:
             error_msg = str(e)

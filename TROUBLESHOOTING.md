@@ -2,7 +2,7 @@
 
 ## 403 Forbidden Error
 
-If you're getting a `403 "Resource not accessible by integration"` error, this means the GitHub token doesn't have permission to post comments.
+If you're getting a `403 "Resource is not accessible by integration"` error, this means the GitHub token doesn't have the permission to post comments.
 
 ### Solution 1: Add Permissions to Your Workflow
 

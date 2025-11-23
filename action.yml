@@ -18,6 +18,10 @@ inputs:
     description: 'OpenAI model to use'
     required: false
     default: 'gpt-4-turbo-preview'
+  pr_number:
+    description: 'Pull request number'
+    required: false
+    default: ${{ github.event.pull_request.number }}
 
 runs:
   using: 'docker'
@@ -26,3 +30,4 @@ runs:
     OPENAI_API_KEY: ${{ inputs.openai_api_key }}
     GITHUB_TOKEN: ${{ inputs.github_token }}
     OPENAI_MODEL: ${{ inputs.openai_model }}
+    PR_NUMBER: ${{ inputs.pr_number }}

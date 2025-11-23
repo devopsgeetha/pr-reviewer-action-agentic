@@ -88,12 +88,15 @@ export PR_NUMBER="${PR_NUMBER}"
 export GITHUB_REPOSITORY="${REPO}"
 
 echo "Reviewing PR #${PR_NUMBER} in ${REPO}"
+echo "🔍 Debug: Exported PR_NUMBER=${PR_NUMBER} for Python"
+echo "🔍 Debug: PR_NUMBER type check: $(echo "${PR_NUMBER}" | od -c | head -1)"
 
 # Run review using the CLI
 # Add current directory to Python path
 export PYTHONPATH=/app:$PYTHONPATH
 
-python -c "
+# Explicitly pass PR_NUMBER to Python to ensure it's available
+PR_NUMBER="${PR_NUMBER}" python3 << PYTHON_SCRIPT
 import os
 import sys
 sys.path.insert(0, '/app')
@@ -115,20 +118,38 @@ if '/' not in repo_str:
     repo_str = 'meetgeetha/pr-reviewer-action'  # Default for testing
 owner, repo = repo_str.split('/')
 
-pr_number_str = os.environ.get('PR_NUMBER', '')
-print(f'🔍 Python: PR_NUMBER env var = "{pr_number_str}"')
+# Get PR number - try multiple sources
+pr_number_str = os.environ.get('PR_NUMBER', '').strip()
+print(f'🔍 Python: PR_NUMBER env var = "{pr_number_str}" (type: {type(pr_number_str).__name__}, length: {len(pr_number_str)})')
 
-if not pr_number_str or pr_number_str == '%!f(<nil>)' or pr_number_str.startswith('%') or pr_number_str == '${PR_NUMBER}':
-    # Fallback for act testing
-    print('⚠️  Python: PR_NUMBER env var is empty or invalid, using default: 1')
-    pr_number_str = '1'
+# If PR_NUMBER is empty or invalid, try to get from GITHUB_EVENT_PATH
+if not pr_number_str or pr_number_str in ['%!f(<nil>)', '${PR_NUMBER}', ''] or pr_number_str.startswith('%'):
+    print(f'⚠️  Python: PR_NUMBER env var is invalid ("{pr_number_str}"), trying GITHUB_EVENT_PATH...')
+    event_path = os.environ.get('GITHUB_EVENT_PATH', '')
+    if event_path and os.path.exists(event_path):
+        try:
+            import json
+            with open(event_path, 'r') as f:
+                event_data = json.load(f)
+                pr_number_str = str(event_data.get('pull_request', {}).get('number') or event_data.get('number', ''))
+                print(f'✅ Python: Found PR number from GITHUB_EVENT_PATH: {pr_number_str}')
+        except Exception as e:
+            print(f'⚠️  Python: Could not read GITHUB_EVENT_PATH: {e}')
+    
+    # If still empty, use default
+    if not pr_number_str or pr_number_str == '':
+        print('⚠️  Python: PR_NUMBER still empty, using default: 1')
+        pr_number_str = '1'
+else:
+    print(f'✅ Python: PR_NUMBER env var looks valid: "{pr_number_str}"')
+
 try:
     pr_number = int(pr_number_str)
-    print(f'✅ Python: Using PR number: {pr_number}')
+    print(f'✅ Python: Successfully parsed PR number: {pr_number}')
 except (ValueError, TypeError) as e:
-    print(f'❌ Python: Error: Invalid PR number, using default: 1')
-    print(f'   PR_NUMBER value was: {pr_number_str}')
-    print(f'   Error: {e}')
+    print(f'❌ Python: Error: Cannot convert PR_NUMBER to integer, using default: 1')
+    print(f'   PR_NUMBER value was: "{pr_number_str}" (repr: {repr(pr_number_str)})')
+    print(f'   Error type: {type(e).__name__}, message: {e}')
     pr_number = 1
 
 # Fetch PR and review
@@ -155,4 +176,4 @@ except Exception as e:
     else:
         print('❌ Error: ' + error_msg)
         raise
-"
+PYTHON_SCRIPT

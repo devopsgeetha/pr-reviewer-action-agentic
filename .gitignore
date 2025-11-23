@@ -205,3 +205,22 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Act (local testing tool)
+.actrc
+
+# ChromaDB data (generated)
+backend/data/chroma_db/
+
+# Local test files
+backend/test_ngrok_api.py
+backend/test_webhook.ps1
+backend/test_webhook.py
+backend/test-api.ps1
+backend/POWERSHELL_COMMANDS.md
+
+# Dockerfile for local testing (duplicate of Dockerfile.action)
+Dockerfile
+
+# Local testing documentation
+ACT_TESTING.md

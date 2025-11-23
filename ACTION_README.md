@@ -1,0 +1,64 @@
+# AI PR Reviewer - GitHub Action
+
+Automated code review using GPT-4 with RAG-enhanced context for smarter, more consistent reviews.
+
+## Features
+
+- 🤖 **AI-Powered Reviews**: Uses GPT-4 for intelligent code analysis
+- 🧠 **RAG Enhancement**: Learns from past reviews and best practices
+- 🔍 **Comprehensive Analysis**: Checks for bugs, security, performance, and style
+- 📊 **Detailed Feedback**: Provides actionable suggestions with severity levels
+- ⚡ **Fast**: ~70ms overhead with local embeddings
+
+## Usage
+
+Add to your repository's `.github/workflows/pr-review.yml`:
+
+```yaml
+name: AI Code Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: AI PR Review
+        uses: yourusername/pr-reviewer-action@v1
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Setup
+
+1. Get an OpenAI API key from https://platform.openai.com/api-keys
+2. Add it to your repository secrets as `OPENAI_API_KEY`
+3. Add the workflow file above
+4. Create a PR and watch the magic happen! ✨
+
+## Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `openai_api_key` | Yes | - | OpenAI API key for GPT-4 |
+| `github_token` | No | `${{ github.token }}` | GitHub token for API access |
+| `openai_model` | No | `gpt-4-turbo-preview` | OpenAI model to use |
+
+## Example Review Output
+
+The action will post a comment on your PR with:
+
+- **Overall Score**: Code quality rating
+- **Issues Found**: Categorized by severity (high/medium/low)
+- **Suggestions**: Actionable improvements
+- **AI Summary**: High-level review insights
+
+## Self-Hosting
+
+Want to run your own instance? See the [Docker deployment guide](./docs/DEPLOYMENT.md).
+
+## License
+
+MIT

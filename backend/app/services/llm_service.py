@@ -79,17 +79,23 @@ Provide your response in the following JSON format:
         {{
             "severity": "high|medium|low",
             "category": "bug|security|quality|performance|style",
-            "message": "Description of the issue",
+            "message": "Brief description of the issue",
             "line": line_number_if_applicable,
-            "file": "{filename}"
+            "file": "{filename}",
+            "suggestion": "Specific recommendation to fix this issue"
         }}
     ],
     "suggestions": [
-        "Specific improvement suggestions"
+        "General improvement suggestions that don't fit specific issues"
     ]
 }}
 
-Be specific and actionable in your feedback.""",
+IMPORTANT:
+- Be specific and actionable in your feedback
+- Include line numbers whenever possible
+- For each issue, provide a concrete suggestion on how to fix it
+- Prioritize critical security and bug issues as 'high' severity
+- Keep messages concise but informative""",
         )
 
         # Summary generation prompt

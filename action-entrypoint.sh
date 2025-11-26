@@ -110,7 +110,7 @@ except:
     rag_service = None
 
 github_service = GitHubService()
-review_service = ReviewService(rag_service=rag_service)
+review_service = ReviewService(rag_service=rag_service, use_agentic=True)
 
 # Get PR data
 repo_str = os.environ.get('GITHUB_REPOSITORY', 'meetgeetha/pr-reviewer-action')
@@ -158,8 +158,8 @@ try:
     pr_data = github_service.get_pull_request(owner, repo, pr_number)
     print(f'📊 Analyzing PR diff...')
     diff_data = github_service.get_pr_diff(pr_data)
-    print(f'🤖 Running AI analysis...')
-    result = review_service.analyze_code(diff_data)
+    print(f'🤖 Running Agentic AI analysis...')
+    result = review_service.analyze_code(diff_data, github_service=github_service)
     print(f'💬 Posting review comment...')
     
     # Post review as comment

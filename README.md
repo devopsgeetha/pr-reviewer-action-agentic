@@ -17,14 +17,18 @@
 
 ## 🤖 Features
 
+- **🤖 Agentic AI**: Autonomous agent that plans, reasons, and makes decisions using function calling
 - **AI-Powered Reviews**: Uses GPT-4 for intelligent code analysis and suggestions
 - **RAG Enhancement**: Learns from past reviews and best practices using Retrieval-Augmented Generation
 - **Comprehensive Analysis**: Checks for bugs, security vulnerabilities, performance issues, and code style
+- **Tool-Based Analysis**: Uses specialized tools for dependency checks, security scans, and code analysis
+- **Iterative Reasoning**: Refines analysis through multiple reasoning steps
 - **Detailed Feedback**: Provides actionable suggestions with severity levels (High/Medium/Low)
 - **Fast Performance**: ~70ms overhead with local embeddings for RAG context
 - **Multi-Language Support**: Works with Python, JavaScript, TypeScript, Java, Go, Rust, and more
 - **GitHub & GitLab**: Supports both GitHub and GitLab platforms
 - **Customizable**: Configurable review depth and model selection
+- **Transparent Reasoning**: Full reasoning chain showing agent decisions and tool usage
 
 ## 🚀 Quick Start
 
@@ -144,7 +148,28 @@ The action runs on these pull request events:
 
 ## 🔍 How It Works
 
-### Review Process
+### Agentic AI Mode (Default)
+
+The system uses an **autonomous agent** that:
+
+1. **Plans**: Analyzes the PR and decides what to review
+2. **Executes Tools**: Uses specialized tools for different analysis types
+3. **Reasons**: Iteratively refines findings through multiple steps
+4. **Learns**: Uses RAG to learn from past reviews
+5. **Finalizes**: Compiles comprehensive review with reasoning chain
+
+**Available Tools:**
+- `analyze_code_file` - Deep file analysis
+- `check_dependencies` - Security & compatibility checks
+- `analyze_security_patterns` - Vulnerability scanning
+- `get_file_content` - Context gathering
+- `check_code_style` - Style & best practices
+- `get_past_reviews` - Learn from history
+- And more...
+
+> **Note**: Agentic mode is enabled by default when `OPENAI_API_KEY` is set. See [AGENTIC_AI.md](AGENTIC_AI.md) for complete documentation.
+
+### Traditional Mode (Fallback)
 
 1. **PR Detection**: Action triggers on pull request events
 2. **Code Analysis**: Fetches PR diff and analyzes changed files

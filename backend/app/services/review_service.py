@@ -2,6 +2,7 @@
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+import os
 
 from app.services.llm_service import LLMService
 from app import mongo
@@ -10,9 +11,12 @@ from app import mongo
 class ReviewService:
     """Handle code review operations"""
 
-    def __init__(self, rag_service=None):
+    def __init__(self, rag_service=None, use_agentic: bool = None):
         self._llm_service: LLMService | None = None
         self._rag_service = rag_service
+        # Use agentic mode by default if OPENAI_API_KEY is set, otherwise fallback to traditional
+        self.use_agentic = use_agentic if use_agentic is not None else bool(os.getenv("OPENAI_API_KEY"))
+        self._agentic_agent = None
 
     @property
     def llm_service(self) -> LLMService:
@@ -38,54 +42,94 @@ class ReviewService:
         if self._llm_service:
             self._llm_service.rag_service = value
 
-    def analyze_code(self, diff_data: Dict) -> Dict[str, Any]:
+    def analyze_code(self, diff_data: Dict, github_service=None) -> Dict[str, Any]:
         """
-        Analyze code changes using LLM
+        Analyze code changes using LLM or Agentic AI
 
         Args:
             diff_data: Dictionary containing PR/MR diff information
+            github_service: Optional GitHub service for agentic mode
 
         Returns:
             Dictionary containing review results
         """
         try:
-            review_result = {
-                "pr_number": diff_data.get("pr_number", diff_data.get("mr_number")),
-                "repository": diff_data.get("repository"),
-                "timestamp": datetime.utcnow(),
-                "summary": "",
-                "issues": [],
-                "suggestions": [],
-                "file_issues": [],
-                "overall_score": 0,
-            }
-
-            # Analyze each file
-            for file_data in diff_data.get("files", []):
-                file_analysis = self._analyze_file(file_data)
-
-                if file_analysis.get("issues"):
-                    review_result["issues"].extend(file_analysis["issues"])
-
-                if file_analysis.get("suggestions"):
-                    review_result["suggestions"].extend(file_analysis["suggestions"])
-
-                if file_analysis.get("file_issues"):
-                    review_result["file_issues"].extend(file_analysis["file_issues"])
-
-            # Generate overall summary
-            review_result["summary"] = self._generate_summary(review_result, diff_data)
-
-            # Calculate overall score (0-100)
-            review_result["overall_score"] = self._calculate_score(review_result)
-
-            # Save review to database
-            self._save_review(review_result)
-
-            return review_result
+            # Use agentic agent if enabled
+            if self.use_agentic:
+                return self._analyze_code_agentic(diff_data, github_service)
+            
+            # Fallback to traditional analysis
+            return self._analyze_code_traditional(diff_data)
 
         except Exception as e:
             raise Exception(f"Error analyzing code: {str(e)}")
+    
+    def _analyze_code_agentic(self, diff_data: Dict, github_service=None) -> Dict[str, Any]:
+        """Analyze code using agentic AI agent"""
+        try:
+            from app.services.agentic_agent import AgenticAgent
+            
+            # Initialize agent if not already done
+            if self._agentic_agent is None:
+                self._agentic_agent = AgenticAgent(
+                    github_service=github_service,
+                    review_service=self,
+                    rag_service=self._rag_service
+                )
+            
+            # Run agentic review
+            review_result = self._agentic_agent.review_pr(diff_data)
+            
+            # Ensure timestamp is set
+            if "timestamp" not in review_result:
+                review_result["timestamp"] = datetime.utcnow()
+            
+            # Save review to database
+            self._save_review(review_result)
+            
+            return review_result
+            
+        except Exception as e:
+            print(f"Agentic review failed, falling back to traditional: {str(e)}")
+            # Fallback to traditional
+            return self._analyze_code_traditional(diff_data)
+    
+    def _analyze_code_traditional(self, diff_data: Dict) -> Dict[str, Any]:
+        """Traditional code analysis (non-agentic)"""
+        review_result = {
+            "pr_number": diff_data.get("pr_number", diff_data.get("mr_number")),
+            "repository": diff_data.get("repository"),
+            "timestamp": datetime.utcnow(),
+            "summary": "",
+            "issues": [],
+            "suggestions": [],
+            "file_issues": [],
+            "overall_score": 0,
+        }
+
+        # Analyze each file
+        for file_data in diff_data.get("files", []):
+            file_analysis = self._analyze_file(file_data)
+
+            if file_analysis.get("issues"):
+                review_result["issues"].extend(file_analysis["issues"])
+
+            if file_analysis.get("suggestions"):
+                review_result["suggestions"].extend(file_analysis["suggestions"])
+
+            if file_analysis.get("file_issues"):
+                review_result["file_issues"].extend(file_analysis["file_issues"])
+
+        # Generate overall summary
+        review_result["summary"] = self._generate_summary(review_result, diff_data)
+
+        # Calculate overall score (0-100)
+        review_result["overall_score"] = self._calculate_score(review_result)
+
+        # Save review to database
+        self._save_review(review_result)
+
+        return review_result
 
     def analyze_code_snippet(self, code: str, language: str) -> Dict[str, Any]:
         """

@@ -45,13 +45,13 @@ def github_webhook():
 
                 # Trigger code review
                 github_service = GitHubService()
-                review_service = ReviewService(rag_service=_rag_service)
+                review_service = ReviewService(rag_service=_rag_service, use_agentic=True)
 
                 # Get PR diff and files
                 diff_data = github_service.get_pr_diff(pr_data)
 
-                # Analyze with LLM
-                review_result = review_service.analyze_code(diff_data)
+                # Analyze with Agentic AI (or fallback to traditional)
+                review_result = review_service.analyze_code(diff_data, github_service=github_service)
 
                 # Post comments to PR
                 github_service.post_review_comments(pr_data, review_result)
@@ -92,12 +92,12 @@ def gitlab_webhook():
 
                 # Trigger code review
                 gitlab_service = GitLabService()
-                review_service = ReviewService(rag_service=_rag_service)
+                review_service = ReviewService(rag_service=_rag_service, use_agentic=True)
 
                 # Get MR diff and files
                 diff_data = gitlab_service.get_mr_diff(mr_data)
 
-                # Analyze with LLM
+                # Analyze with Agentic AI (or fallback to traditional)
                 review_result = review_service.analyze_code(diff_data)
 
                 # Post comments to MR

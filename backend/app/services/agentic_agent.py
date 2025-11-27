@@ -359,15 +359,15 @@ Be thorough but efficient. Use tools when needed, but don't over-analyze simple 
         if any(phrase in content for phrase in ["finalize", "complete", "done", "finished", "summary"]):
             return True
         
-                # Check if we have sufficient information
-                if len(review_result.get("issues", [])) > 0 or len(review_result.get("suggestions", [])) > 0:
-                    # If we have findings and no pending tool calls, we can finalize
-                    has_tool_calls = (
-                        (hasattr(response, "tool_calls") and response.tool_calls) or
-                        (hasattr(response, "additional_kwargs") and "tool_calls" in response.additional_kwargs)
-                    )
-                    if not has_tool_calls:
-                        return True
+        # Check if we have sufficient information
+        if len(review_result.get("issues", [])) > 0 or len(review_result.get("suggestions", [])) > 0:
+            # If we have findings and no pending tool calls, we can finalize
+            has_tool_calls = (
+                (hasattr(response, "tool_calls") and response.tool_calls) or
+                (hasattr(response, "additional_kwargs") and "tool_calls" in response.additional_kwargs)
+            )
+            if not has_tool_calls:
+                return True
         
         return False
     

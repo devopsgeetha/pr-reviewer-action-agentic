@@ -1,20 +1,26 @@
 FROM python:3.11-slim
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+# Install system dependencies including Node.js for MCP filesystem server
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Force rebuild - v1.0.1 (fixes 403 error and LangChain deprecations)
+# Force rebuild - v1.0.2 (adds MCP filesystem support)
 
-# Copy backend code
-COPY backend/requirements.txt .
+# Copy backend code - use production requirements for faster builds
+COPY backend/requirements-prod.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
 
-# Initialize RAG knowledge base
-RUN python init_rag.py || echo "RAG initialization skipped"
+# Skip RAG initialization during build to speed up
+# It will initialize on first use instead
+# RUN python init_rag.py || echo "RAG initialization skipped"
 
 # Copy action entrypoint
 COPY action-entrypoint.sh /entrypoint.sh

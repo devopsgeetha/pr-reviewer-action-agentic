@@ -29,11 +29,20 @@ class AgenticAgent:
         self.rag_service = rag_service
         self.max_iterations = max_iterations
         
+        # Initialize MCP Filesystem client
+        mcp_filesystem = None
+        try:
+            from app.services.mcp_filesystem import MCPFilesystemClient
+            mcp_filesystem = MCPFilesystemClient()
+        except Exception as e:
+            print(f"Warning: Could not initialize MCP Filesystem: {e}")
+        
         # Initialize components
         self.tools = AgentTools(
             github_service=github_service,
             review_service=review_service,
-            rag_service=rag_service
+            rag_service=rag_service,
+            mcp_filesystem=mcp_filesystem
         )
         self.memory = AgentMemory()
         

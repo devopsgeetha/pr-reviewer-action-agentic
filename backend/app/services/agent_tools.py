@@ -31,10 +31,11 @@ class Tool:
 class AgentTools:
     """Collection of tools available to the agent"""
     
-    def __init__(self, github_service=None, review_service=None, rag_service=None):
+    def __init__(self, github_service=None, review_service=None, rag_service=None, mcp_filesystem=None):
         self.github_service = github_service
         self.review_service = review_service
         self.rag_service = rag_service
+        self.mcp_filesystem = mcp_filesystem  # MCP Filesystem client
         self.tools = self._initialize_tools()
     
     def _initialize_tools(self) -> Dict[str, Tool]:
@@ -266,9 +267,25 @@ class AgentTools:
         }
     
     def _get_file_content(self, filename: str, repo_name: str) -> Dict[str, Any]:
-        """Get file content from repository"""
+        """Get file content from repository or local filesystem via MCP"""
+        # Try MCP filesystem first (for local files in GitHub Actions)
+        if self.mcp_filesystem and self.mcp_filesystem.enabled:
+            try:
+                import asyncio
+                content = asyncio.run(self.mcp_filesystem.read_file(filename))
+                if content:
+                    return {
+                        "filename": filename,
+                        "content": content,
+                        "size": len(content),
+                        "source": "mcp_filesystem"
+                    }
+            except Exception as e:
+                print(f"MCP filesystem read failed, falling back to GitHub API: {e}")
+        
+        # Fallback to GitHub API
         if not self.github_service or not self.github_service.client:
-            return {"error": "GitHub service not available"}
+            return {"error": "GitHub service not available and MCP filesystem failed"}
         
         try:
             repo = self.github_service.client.get_repo(repo_name)
@@ -276,7 +293,8 @@ class AgentTools:
             return {
                 "filename": filename,
                 "content": file_content.decoded_content.decode("utf-8"),
-                "size": file_content.size
+                "size": file_content.size,
+                "source": "github_api"
             }
         except Exception as e:
             return {"error": f"Could not fetch file: {str(e)}"}
@@ -397,9 +415,24 @@ class AgentTools:
         }
     
     def _search_codebase(self, query: str, repo_name: str) -> Dict[str, Any]:
-        """Search codebase"""
+        """Search codebase using MCP filesystem or GitHub API"""
+        # Try MCP filesystem first (faster for local searches)
+        if self.mcp_filesystem and self.mcp_filesystem.enabled:
+            try:
+                import asyncio
+                matches = asyncio.run(self.mcp_filesystem.search_files(query, "."))
+                return {
+                    "query": query,
+                    "results": matches,
+                    "count": len(matches),
+                    "source": "mcp_filesystem"
+                }
+            except Exception as e:
+                print(f"MCP search failed, falling back to GitHub API: {e}")
+        
+        # Fallback to GitHub API
         if not self.github_service or not self.github_service.client:
-            return {"error": "GitHub service not available"}
+            return {"error": "GitHub service not available and MCP filesystem failed"}
         
         try:
             repo = self.github_service.client.get_repo(repo_name)
@@ -408,7 +441,8 @@ class AgentTools:
             return {
                 "query": query,
                 "results": [],  # Simplified - would use actual search
-                "count": 0
+                "count": 0,
+                "source": "github_api"
             }
         except Exception as e:
             return {"error": f"Search failed: {str(e)}"}

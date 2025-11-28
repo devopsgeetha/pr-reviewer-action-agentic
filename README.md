@@ -101,7 +101,7 @@ jobs:
       issues: write
       pull-requests: read
     steps:
-      - uses: meetgeetha/pr-reviewer-action@agentic_ai_v2
+      - uses: meetgeetha/pr-reviewer-action@v1
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
 ```

@@ -167,7 +167,7 @@ The system uses an **autonomous agent** that:
 - `get_past_reviews` - Learn from history
 - And more...
 
-> **Note**: Agentic mode is enabled by default when `OPENAI_API_KEY` is set. See [AGENTIC_AI.md](AGENTIC_AI.md) for complete documentation.
+> **Note**: Agentic mode is enabled by default when `OPENAI_API_KEY` is set and the model supports function calling (gpt-4, gpt-4-turbo).
 
 ### Traditional Mode (Fallback)
 

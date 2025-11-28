@@ -96,8 +96,6 @@ If you're getting a 403 error when the action tries to post comments:
 
 4. **Repository settings**: Check that your repository allows GitHub Actions to write to issues/comments in Settings → Actions → General → Workflow permissions.
 
-For more detailed troubleshooting, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
-
 ## Inputs
 
 | Input | Required | Default | Description |
@@ -127,7 +125,7 @@ The agentic system includes 9 specialized tools:
 - Issue prioritization
 - And more...
 
-See [AGENTIC_AI.md](../AGENTIC_AI.md) for complete documentation.
+The agentic agent automatically activates when using gpt-4 or gpt-4-turbo models.
 
 ## Example Review Output
 

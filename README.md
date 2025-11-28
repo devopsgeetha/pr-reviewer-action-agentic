@@ -150,15 +150,7 @@ The system uses an **autonomous agent** that:
 - `get_past_reviews` - Learn from history
 - And more...
 
-> **Note**: Agentic mode is enabled by default when `OPENAI_API_KEY` is set and the model supports function calling (gpt-4, gpt-4-turbo).
-
-### Traditional Mode (Fallback)
-
-1. **PR Detection**: Action triggers on pull request events
-2. **Code Analysis**: Fetches PR diff and analyzes changed files
-3. **RAG Context**: Retrieves relevant best practices and past review patterns
-4. **AI Review**: GPT-4 analyzes code with context-aware suggestions
-5. **Comment Posting**: Posts detailed review comments on the PR
+> **Note**: This advanced agentic mode provides the most comprehensive and intelligent code reviews available.
 
 ### RAG (Retrieval-Augmented Generation)
 

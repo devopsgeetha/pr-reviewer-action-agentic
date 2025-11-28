@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Enable MCP Filesystem for faster file operations
+export MCP_FILESYSTEM_ENABLED=true
+echo "✅ MCP Filesystem support enabled"
+
 # Get PR details from GitHub context
 # Priority order:
 # 1. GITHUB_EVENT_PATH (most reliable for pull_request events)

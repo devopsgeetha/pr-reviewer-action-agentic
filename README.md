@@ -101,7 +101,7 @@ jobs:
       issues: write
       pull-requests: read
     steps:
-      - uses: meetgeetha/pr-reviewer-action@v1
+      - uses: meetgeetha/pr-reviewer-action@agentic_ai_v2
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
 ```
@@ -121,26 +121,6 @@ jobs:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}  # Optional, defaults to GITHUB_TOKEN
           openai_model: gpt-4-turbo-preview          # Optional, choose your model
-```
-
-### Version Selection
-
-Choose the version that best fits your needs:
-
-| Version | Features | Use Case |
-|---------|----------|----------|
-| `@agentic_ai_v2` | 🤖 Full Agentic AI with autonomous planning<br/>📊 Rich formatted reviews with emoji & tables<br/>🔧 9 specialized analysis tools<br/>⚡ MCP Filesystem integration | **Recommended** - Advanced AI reviews |
-| `@main` | 🔍 Traditional LLM analysis<br/>✅ JSON parsing fixes<br/>📝 Simple formatted output | Simpler, lightweight reviews |
-| `@v1` | 🔍 Basic LLM analysis<br/>📝 Plain text output | Legacy version |
-
-**Example using Agentic AI (recommended):**
-```yaml
-uses: meetgeetha/pr-reviewer-action@agentic_ai_v2
-```
-
-**Example using simple version:**
-```yaml
-uses: meetgeetha/pr-reviewer-action@main
 ```
 
 ### Supported Models

@@ -73,6 +73,8 @@ jobs:
 
 ```
 
+> **Branch vs tag**: `AGENTIC_AI` is the live branch for the agentic workflow. Use `agentic_ai_v2` if you prefer the tagged release snapshot. Use `main` for the stable non-agentic reviewer.
+
 ### 3. Add Your API Key to Secrets
 
 1. Go to your repository **Settings** → **Secrets and variables** → **Actions**

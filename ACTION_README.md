@@ -41,18 +41,24 @@ jobs:
           fetch-depth: 0
       
       - name: AI PR Review (Agentic)
-        uses: yourusername/pr-reviewer-action@AGENTIC_AI
+        uses: meetgeetha/pr-reviewer-action@agentic_ai_v2
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           openai_model: gpt-4-turbo-preview  # Recommended for agentic mode
 ```
 
+> **Branch vs tag**: `AGENTIC_AI` is the branch for the latest agentic workflow. Use the `agentic_ai_v2` tag if you prefer the published release snapshot.
+
 ### Using a Specific Version
 
 ```yaml
 - name: AI PR Review
-  uses: yourusername/pr-reviewer-action@v1  # or @main, @AGENTIC_AI
+  uses: meetgeetha/pr-reviewer-action@main        # stable branch
+# or:
+  uses: meetgeetha/pr-reviewer-action@AGENTIC_AI  # latest agentic branch
+# or:
+  uses: meetgeetha/pr-reviewer-action@agentic_ai_v2  # agentic release tag
   with:
     openai_api_key: ${{ secrets.OPENAI_API_KEY }}
     github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -88,7 +94,7 @@ If you're getting a 403 error when the action tries to post comments:
 3. **Fork PRs**: If the PR is from a fork, `GITHUB_TOKEN` has limited permissions. You may need to use a Personal Access Token (PAT) with `repo` scope instead:
    ```yaml
    - name: AI PR Review
-     uses: yourusername/pr-reviewer-action@v1
+     uses: meetgeetha/pr-reviewer-action@main
      with:
        openai_api_key: ${{ secrets.OPENAI_API_KEY }}
        github_token: ${{ secrets.PAT_TOKEN }}  # Use PAT instead of GITHUB_TOKEN
@@ -106,7 +112,7 @@ If you're getting a 403 error when the action tries to post comments:
 
 ## Agentic AI Features
 
-When using the `AGENTIC_AI` branch or a version with agentic support, the action automatically:
+When using the `AGENTIC_AI` branch or the `agentic_ai_v2` release tag (or any version with agentic support), the action automatically:
 
 - **Plans** the review strategy based on PR changes
 - **Uses Tools** for specialized analysis (security, dependencies, code style)

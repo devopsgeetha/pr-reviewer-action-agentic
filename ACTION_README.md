@@ -15,9 +15,9 @@ Automated code review using GPT-4 with **Agentic AI** and RAG-enhanced context f
 
 ## Usage
 
-### Basic Usage (Agentic AI - Recommended)
+### Advanced Usage (AGENTIC_AI Branch)
 
-Add to your repository's `.github/workflows/pr-review.yml`:
+For the latest agentic AI features, use the `AGENTIC_AI` branch:
 
 ```yaml
 name: AI Code Review (Agentic)
@@ -41,14 +41,14 @@ jobs:
           fetch-depth: 0
       
       - name: AI PR Review (Agentic)
-        uses: meetgeetha/pr-reviewer-action@agentic_ai_v2
+        uses: meetgeetha/pr-reviewer-action@AGENTIC_AI
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           openai_model: gpt-4-turbo-preview  # Recommended for agentic mode
 ```
 
-> **Branch vs tag**: `AGENTIC_AI` is the branch for the latest agentic workflow. Use the `agentic_ai_v2` tag if you prefer the published release snapshot.
+> **Note**: The `AGENTIC_AI` branch contains the latest agentic AI features. For a stable release, use the `agentic_ai_v2` tag or the `main` branch.
 
 ### Using a Specific Version
 
@@ -112,7 +112,7 @@ If you're getting a 403 error when the action tries to post comments:
 
 ## Agentic AI Features
 
-When using the `AGENTIC_AI` branch or the `agentic_ai_v2` release tag (or any version with agentic support), the action automatically:
+When using the `AGENTIC_AI` branch (or the `agentic_ai_v2` release tag), the action automatically:
 
 - **Plans** the review strategy based on PR changes
 - **Uses Tools** for specialized analysis (security, dependencies, code style)

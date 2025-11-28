@@ -364,7 +364,8 @@ class GitHubService:
                     badge = "🔵 **LOW PRIORITY**"
                 
                 # Issue card style formatting
-                comment += f"#### {emoji} Issue #{idx}: {badge}\n\n"
+                # Use \u0023 to prevent GitHub from auto-linking #number to issues/PRs
+                comment += f"#### {emoji} Issue \\#{idx}: {badge}\n\n"
                 comment += f"**{issue.get('message')}**\n\n"
                 
                 # Details table

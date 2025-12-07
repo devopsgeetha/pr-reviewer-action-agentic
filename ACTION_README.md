@@ -142,6 +142,137 @@ The action will post a comment on your PR with:
 - **Suggestions**: Actionable improvements
 - **AI Summary**: High-level review insights
 
+## Local Testing
+
+There are several ways to test this action locally before deploying:
+
+### Method 1: Using Act (Recommended for GitHub Actions Testing)
+
+[Act](https://github.com/nektos/act) is a tool that runs GitHub Actions locally using Docker.
+
+1. **Install Act**:
+   ```bash
+   # Windows (using winget)
+   winget install nektos.act
+   
+   # Mac (using Homebrew)
+   brew install act
+   
+   # Linux (using the install script)
+   curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+   ```
+
+2. **Create a test PR event file** (`.github/pr-event.json`):
+   ```json
+   {
+     "action": "opened",
+     "pull_request": {
+       "number": 1,
+       "head": {
+         "sha": "abc123",
+         "repo": {
+           "full_name": "owner/repo"
+         }
+       },
+       "base": {
+         "repo": {
+           "full_name": "owner/repo"
+         }
+       }
+     },
+     "repository": {
+       "full_name": "owner/repo"
+     }
+   }
+   ```
+
+3. **Run the action with act**:
+   ```bash
+   act pull_request \
+     -W .github/workflows/test-action.yml \
+     -e .github/pr-event.json \
+     -s OPENAI_API_KEY=your-openai-key \
+     -s GITHUB_TOKEN=your-github-token \
+     --container-architecture linux/amd64
+   ```
+
+   **Note**: For Windows users, use WSL for best compatibility. Docker must be running.
+
+### Method 2: Direct Docker Testing
+
+Test the Docker container directly without GitHub Actions:
+
+1. **Build the Docker image**:
+   ```bash
+   docker build -f Dockerfile.action -t pr-reviewer-action .
+   ```
+
+2. **Run with environment variables**:
+   ```bash
+   docker run --rm \
+     -e OPENAI_API_KEY=your-openai-key \
+     -e GITHUB_TOKEN=your-github-token \
+     -e OPENAI_MODEL=gpt-4-turbo-preview \
+     -e PR_NUMBER=1 \
+     -e GITHUB_REPOSITORY=owner/repo \
+     pr-reviewer-action
+   ```
+
+### Method 3: Testing the Backend Directly (Python)
+
+For development and debugging, you can run the backend Python code directly:
+
+1. **Set up the environment**:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   ```
+
+2. **Set environment variables**:
+   ```bash
+   # Windows PowerShell
+   $env:OPENAI_API_KEY="your-openai-key"
+   $env:GITHUB_TOKEN="your-github-token"
+   $env:OPENAI_MODEL="gpt-4-turbo-preview"
+   $env:PR_NUMBER="1"
+   $env:GITHUB_REPOSITORY="owner/repo"
+   
+   # Linux/Mac
+   export OPENAI_API_KEY="your-openai-key"
+   export GITHUB_TOKEN="your-github-token"
+   export OPENAI_MODEL="gpt-4-turbo-preview"
+   export PR_NUMBER="1"
+   export GITHUB_REPOSITORY="owner/repo"
+   ```
+
+3. **Test OpenAI connection**:
+   ```bash
+   # Make sure backend/.env is configured with OPENAI_API_KEY
+   ./test-openai-connection.sh
+   ```
+   
+   This will test:
+   - OpenAI API connectivity
+   - Python imports
+   - LLM service initialization
+   - Code analysis functionality
+
+### Method 4: Testing with Unit Tests
+
+Run the existing test suite:
+
+```bash
+cd backend
+pytest tests/ -v
+```
+
+### Tips for Local Testing
+
+- **Use a test repository**: Create a test repository with a simple PR to avoid affecting real projects
+- **Mock API calls**: For faster iteration, consider mocking GitHub API calls in unit tests
+- **Check logs**: The action provides detailed debug output - check console logs for troubleshooting
+- **Test with real PRs**: For final validation, test with an actual PR in a test repository
+
 ## Self-Hosting
 
 Want to run your own instance? You can build and run the Docker container locally:

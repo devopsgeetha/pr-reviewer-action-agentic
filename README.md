@@ -228,6 +228,26 @@ that should be addressed.
 - **PyGithub**: GitHub API client
 - **Docker**: Containerization
 
+### Technical Details
+
+#### MCP Filesystem Integration
+
+The action uses **Model Context Protocol (MCP) Filesystem** for optimized file operations in GitHub Actions environments. This provides:
+
+- **Faster file access**: Direct filesystem operations instead of API calls when possible
+- **Automatic fallback**: Gracefully falls back to GitHub API if MCP is unavailable
+- **Zero configuration**: Enabled automatically via `MCP_FILESYSTEM_ENABLED=true` environment variable
+
+**How it works:**
+- MCP filesystem server runs via Node.js (`@modelcontextprotocol/server-filesystem`)
+- Agent tools (`get_file_content`, `search_codebase`) try MCP first, then fall back to GitHub API
+- No user configuration needed - works transparently
+
+**Implementation:**
+- See `backend/app/services/mcp_filesystem.py` for the client implementation
+- MCP is initialized in `agentic_agent.py` and passed to agent tools
+- Fallback mechanisms ensure reliability even if MCP fails
+
 ## 🛠️ Development
 
 ### Prerequisites

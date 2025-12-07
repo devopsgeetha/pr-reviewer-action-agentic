@@ -92,10 +92,45 @@ class AgenticAgent:
                 )
         else:
             self.llm = None
+            print("⚠️  Warning: OPENAI_API_KEY not set. Agentic mode disabled.")
+    
+    def _invoke_with_tools(self, messages: List, tool_schemas: List[Dict[str, Any]]):
+        """
+        Invoke LLM with tool/function calling enabled
+        
+        Args:
+            messages: Conversation history
+            tool_schemas: Available tool schemas for function calling
+            
+        Returns:
+            LLM response (may include tool calls)
+        """
+        # For OpenAI with LangChain, we can use the bound LLM directly
+        # This method provides a consistent interface and allows for future customization
+        try:
+            # Convert LangChain messages if needed (they should already be in correct format)
+            response = self.llm.invoke(messages)
+            return response
+        except Exception as e:
+            print(f"Error invoking LLM with tools: {e}")
+            # Fallback to simple invocation without tools
+            try:
+                # Create a simple LLM without tool binding for fallback
+                import os
+                from langchain_openai import ChatOpenAI
+                fallback_llm = ChatOpenAI(
+                    model=os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview"),
+                    temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.3)),
+                    api_key=os.getenv("OPENAI_API_KEY"),
+                )
+                return fallback_llm.invoke(messages)
+            except Exception as fallback_error:
+                print(f"Fallback LLM invocation also failed: {fallback_error}")
+                raise
     
     def _create_system_prompt(self) -> str:
         """Create system prompt for the agent"""
-        return """You are an autonomous AI code review agent. Your goal is to thoroughly review pull requests by:
+        return """You are an autonomous AI code review agent with access to specialized tools. Your goal is to thoroughly review pull requests by:
 
 1. **Planning**: Analyze the PR and create a review plan
 2. **Investigating**: Use available tools to gather information and analyze code
@@ -103,32 +138,38 @@ class AgenticAgent:
 4. **Iterating**: Refine your review based on what you discover
 5. **Finalizing**: Compile a comprehensive review with actionable feedback
 
-**Available Tools:**
-- analyze_code_file: Deep analysis of specific files
+**Available Tools (USE THESE!):**
+- analyze_code_file: Deep analysis of specific files for bugs, security, quality
 - get_file_content: Get full file contents for context
-- check_dependencies: Analyze package dependencies
-- analyze_security_patterns: Security vulnerability scanning
+- check_dependencies: Analyze package dependencies for security
+- analyze_security_patterns: Security vulnerability scanning (SQL injection, XSS, etc.)
 - check_code_style: Code style and best practices
-- get_related_files: Find related files
-- search_codebase: Search for patterns
-- get_past_reviews: Learn from past reviews
+- get_related_files: Find related files that might be affected
+- search_codebase: Search for patterns or similar code
+- get_past_reviews: Learn from past reviews (RAG)
 - prioritize_issues: Organize and prioritize findings
 
 **Your Approach:**
-- Start by understanding the PR scope and changes
-- Use tools strategically to gather information
-- Think step-by-step about what you find
-- Prioritize critical security and bug issues
-- Provide specific, actionable feedback
-- Learn from past reviews to maintain consistency
+1. Start by analyzing 2-3 most critical changed files using analyze_code_file
+2. For security-sensitive code, use analyze_security_patterns
+3. If dependencies changed, use check_dependencies
+4. Use get_past_reviews to maintain consistency with previous feedback
+5. Prioritize findings with prioritize_issues before finalizing
 
 **Decision Making:**
-- Decide which files need deep analysis
-- Determine if security scans are needed
-- Choose when to check dependencies
-- Decide when you have enough information to finalize
+- **ALWAYS** use analyze_code_file for any file with significant changes
+- **ALWAYS** use analyze_security_patterns for authentication, database, or API code
+- **ALWAYS** use check_dependencies if package files are modified
+- Use tools strategically but don't over-analyze trivial changes
+- When you have analyzed the key files and found issues, say "finalize" to complete
 
-Be thorough but efficient. Use tools when needed, but don't over-analyze simple changes."""
+**Output Format:**
+After using tools and gathering findings, provide your final analysis with:
+- Specific issues found (severity, category, message, line number)
+- Actionable suggestions
+- Overall assessment
+
+Be thorough but efficient. Focus on high-impact issues."""
     
     def review_pr(self, diff_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -149,6 +190,9 @@ Be thorough but efficient. Use tools when needed, but don't over-analyze simple 
         
         # Build initial context
         context = self._build_initial_context(diff_data)
+        
+        # Get tool schemas for function calling
+        tool_schemas = self.tools.get_tools_schema()
         
         # Agent reasoning loop
         messages = [
@@ -173,24 +217,32 @@ Be thorough but efficient. Use tools when needed, but don't over-analyze simple 
         while iteration < self.max_iterations:
             iteration += 1
             
-            # Get LLM response (may include function calls)
+            print(f"\n🤖 Agent Iteration {iteration}/{self.max_iterations}")
+            
+            # Get LLM response with tool schemas (enables function calling)
             try:
-                response = self.llm.invoke(messages)
+                response = self._invoke_with_tools(messages, tool_schemas)
                 messages.append(response)
                 
                 # Record agent's thought
                 thought = response.content if response.content else "Analyzing..."
                 self.memory.add_step(thought)
+                print(f"💭 Agent thought: {thought[:200]}...")
                 
                 # Check if LLM wants to call functions/tools
                 tool_calls = None
                 if hasattr(response, "tool_calls") and response.tool_calls:
                     tool_calls = response.tool_calls
+                    print(f"🔧 Tool calls requested: {len(tool_calls)}")
                 elif hasattr(response, "additional_kwargs") and "tool_calls" in response.additional_kwargs:
                     tool_calls = response.additional_kwargs["tool_calls"]
+                    print(f"🔧 Tool calls requested (legacy): {len(tool_calls) if isinstance(tool_calls, list) else 1}")
+                else:
+                    print("ℹ️  No tool calls in this iteration")
                 
                 if tool_calls:
                     # Execute tool calls
+                    print(f"   Executing {len(tool_calls) if isinstance(tool_calls, list) else 1} tool(s)...")
                     for tool_call in tool_calls:
                         # Handle different tool call formats
                         if isinstance(tool_call, dict):
@@ -204,6 +256,8 @@ Be thorough but efficient. Use tools when needed, but don't over-analyze simple 
                         if not tool_name:
                             continue
                         
+                        print(f"   📌 Calling tool: {tool_name}")
+                        
                         # Parse arguments
                         try:
                             tool_args = json.loads(tool_args_str) if isinstance(tool_args_str, str) else tool_args_str
@@ -212,6 +266,7 @@ Be thorough but efficient. Use tools when needed, but don't over-analyze simple 
                         
                         # Execute tool
                         tool_result = self.tools.execute_tool(tool_name, tool_args)
+                        print(f"   ✅ Tool result: {tool_result.get('success', False)}")
                         
                         # Record tool usage
                         self.memory.add_step(
@@ -220,6 +275,10 @@ Be thorough but efficient. Use tools when needed, but don't over-analyze simple 
                             tool_arguments=tool_args,
                             tool_result=tool_result
                         )
+                        
+                        # Track unique tools used
+                        if tool_name not in review_result["tools_used"]:
+                            review_result["tools_used"].append(tool_name)
                         
                         # Add tool result to messages
                         try:
@@ -252,6 +311,7 @@ Be thorough but efficient. Use tools when needed, but don't over-analyze simple 
                 
                 # Check if agent is ready to finalize (only if no tool calls)
                 if not tool_calls and self._should_finalize(response, review_result):
+                    print(f"✨ Agent ready to finalize after {iteration} iterations")
                     self.memory.update_phase("finalizing")
                     break
                 
@@ -262,10 +322,15 @@ Be thorough but efficient. Use tools when needed, but don't over-analyze simple 
                     self.memory.update_phase("reviewing")
             
             except Exception as e:
+                print(f"❌ Error in iteration {iteration}: {str(e)}")
                 self.memory.add_step(f"Error in iteration {iteration}: {str(e)}")
                 # Continue with next iteration or break if critical
                 if iteration >= 3:
                     break
+        
+        print(f"\n📊 Agent completed {iteration} iterations")
+        print(f"   Issues found: {len(review_result.get('issues', []))}")
+        print(f"   Tools used: {', '.join(review_result.get('tools_used', [])) or 'None'}")
         
         # Finalize review
         self.memory.update_phase("finalizing")

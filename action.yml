@@ -17,7 +17,7 @@ inputs:
   openai_model:
     description: 'OpenAI model to use'
     required: false
-    default: 'gpt-4-turbo-preview'
+    default: 'gpt-4o'
   pr_number:
     description: 'Pull request number'
     required: false

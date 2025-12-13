@@ -24,7 +24,7 @@ if [ -z "$OPENAI_API_KEY" ]; then
 fi
 
 if [ -z "$OPENAI_MODEL" ]; then
-    export OPENAI_MODEL="gpt-4-turbo-preview"
+    export OPENAI_MODEL="gpt-4o"
 fi
 
 echo "✅ Environment variables loaded"

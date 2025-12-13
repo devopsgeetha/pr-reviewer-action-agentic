@@ -12,7 +12,7 @@ class LLMService:
 
     def __init__(self, rag_service=None):
         self.api_key = os.getenv("OPENAI_API_KEY")
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-4o")
         self.temperature = float(os.getenv("OPENAI_TEMPERATURE", 0.3))
         self.rag_service = rag_service  # Optional RAG service
         

@@ -277,12 +277,19 @@ Be THOROUGH and DETAILED. Quality over speed. This is a professional code review
                     for tool_call in tool_calls:
                         # Handle different tool call formats
                         if isinstance(tool_call, dict):
-                            tool_name = tool_call.get("function", {}).get("name") or tool_call.get("name")
-                            tool_args_str = tool_call.get("function", {}).get("arguments") or tool_call.get("args", "{}")
+                            function_info = tool_call.get("function") or {}
+                            tool_name = function_info.get("name") if isinstance(function_info, dict) else tool_call.get("name")
+                            tool_args_str = function_info.get("arguments") if isinstance(function_info, dict) else tool_call.get("args", "{}")
                         else:
                             # Handle tool call objects
-                            tool_name = getattr(tool_call, "name", None) or getattr(tool_call, "function", {}).get("name")
-                            tool_args_str = getattr(tool_call, "args", "{}") or getattr(tool_call, "function", {}).get("arguments", "{}")
+                            tool_name = getattr(tool_call, "name", None)
+                            if not tool_name:
+                                function_info = getattr(tool_call, "function", None)
+                                tool_name = function_info.get("name") if isinstance(function_info, dict) else None
+                            tool_args_str = getattr(tool_call, "args", None)
+                            if not tool_args_str:
+                                function_info = getattr(tool_call, "function", None)
+                                tool_args_str = function_info.get("arguments", "{}") if isinstance(function_info, dict) else "{}"
                         
                         if not tool_name:
                             continue

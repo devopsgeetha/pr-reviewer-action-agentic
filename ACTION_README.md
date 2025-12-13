@@ -109,6 +109,7 @@ If you're getting a 403 error when the action tries to post comments:
 | `openai_api_key` | Yes | - | OpenAI API key for GPT-4 |
 | `github_token` | No | `${{ github.token }}` | GitHub token for API access |
 | `openai_model` | No | `gpt-4-turbo-preview` | OpenAI model to use (use gpt-4 or gpt-4-turbo for agentic mode) |
+| `comment_mode` | No | `inline` | Comment mode: `inline` for line-specific review comments, `general` for single issue comment |
 
 ## Agentic AI Features
 
@@ -132,6 +133,40 @@ The agentic system includes 9 specialized tools:
 - And more...
 
 The agentic agent automatically activates when using gpt-4 or gpt-4-turbo models.
+
+## Comment Modes
+
+### Inline Comments (Default)
+
+When `comment_mode: inline` (default), the action posts **line-specific review comments** directly on the code changes in your PR. This creates a more interactive experience where each issue is highlighted exactly where it occurs in the code.
+
+**Requirements for inline comments:**
+```yaml
+permissions:
+  pull-requests: write  # Required for inline comments
+  contents: read
+```
+
+**Example inline comment on line 42:**
+```diff
+function authenticateUser(username, password) {
++   const jwt = "hardcoded-secret-key";  // 🔴 HIGH: JWT secret is hardcoded
+    return generateToken(jwt, username);
+}
+```
+
+### General Comments
+
+When `comment_mode: general`, the action posts a **single comprehensive comment** on the PR with all findings summarized in one place.
+
+**Requirements for general comments:**
+```yaml
+permissions:
+  issues: write  # Required for general comments
+  contents: read
+```
+
+The action automatically falls back to general comments if inline comments fail due to permissions.
 
 ## Example Review Output
 

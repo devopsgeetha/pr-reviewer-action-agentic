@@ -566,6 +566,9 @@ class GitHubService:
                 return
                 
             print(f"   Found {len(inline_comments)} inline comments to post")
+            for i, comment in enumerate(inline_comments):
+                print(f"   Comment {i+1}: {comment['path']} line {comment['line']}")
+                print(f"      Body preview: {comment['body'][:100]}...")
             
             # Create review body with summary
             review_body = self._create_review_summary(review_result)

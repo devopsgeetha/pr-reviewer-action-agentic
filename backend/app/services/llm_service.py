@@ -28,6 +28,7 @@ class LLMService:
                     model=self.model,
                     temperature=self.temperature,
                     api_key=self.api_key,  # Use api_key parameter instead of openai_api_key
+                    max_tokens=int(os.getenv('MAX_TOKENS', 8000)),
                 )
                 print(f"LLMService init - Successfully initialized ChatOpenAI with model {self.model}")
             except TypeError as exc:
@@ -55,8 +56,8 @@ class LLMService:
         # Code analysis prompt
         self.analysis_prompt = PromptTemplate(
             input_variables=["code", "filename", "language"],
-            template="""You are an expert code reviewer.
-Analyze the following code changes and provide a detailed review.
+            template="""You are a senior staff engineer performing an in-depth code review.
+Provide a COMPREHENSIVE, DETAILED analysis of the following code changes.
 
 Filename: {filename}
 Language: {language}
@@ -72,48 +73,56 @@ Focus your analysis on the + lines (new/changed code). For line numbers:
 - Count the + lines from that starting point to determine specific line numbers
 - Only report line numbers for + lines (new/added code)
 
-Please analyze this code for:
-1. **Bugs and Errors**: Identify potential bugs, logic errors, or runtime issues
-2. **Security Vulnerabilities**: Check for security flaws, injection risks, or unsafe practices  
-3. **Code Quality**: Assess code readability, maintainability, and adherence to best practices
-4. **Performance**: Identify potential performance bottlenecks or inefficiencies
-5. **Style and Standards**: Check compliance with coding standards and conventions
+Perform a THOROUGH analysis covering:
+1. **Bugs and Errors**: Find ALL potential bugs, logic errors, runtime issues, edge cases, race conditions
+2. **Security Vulnerabilities**: Deep security analysis - injection risks, auth flaws, data exposure, unsafe practices
+3. **Code Quality**: Architecture, design patterns, readability, maintainability, best practices, code smells
+4. **Performance**: Bottlenecks, inefficiencies, optimization opportunities, algorithmic complexity
+5. **Style and Standards**: Coding standards, conventions, documentation, naming, structure
+6. **Testing**: Test coverage implications, testability, missing test cases
+7. **Error Handling**: Exception handling, error cases, input validation, edge cases
+8. **Architecture**: Design decisions, patterns, SOLID principles, separation of concerns
 
 Provide your response ONLY as a valid JSON object in this exact format (NO markdown, NO code blocks, NO additional text):
 {{
     "issues": [
         {{
             "severity": "high|medium|low",
-            "category": "bug|security|quality|performance|style",
-            "message": "Brief description of the issue",
+            "category": "bug|security|quality|performance|style|testing|architecture",
+            "message": "DETAILED description of the issue with specific reasoning and impact",
             "line": actual_line_number_in_new_file,
             "file": "{filename}",
-            "suggestion": "Specific recommendation to fix this issue"
+            "suggestion": "SPECIFIC, ACTIONABLE recommendation with code examples if possible",
+            "reasoning": "WHY this is an issue and WHAT could go wrong",
+            "impact": "Potential consequences if not addressed"
         }}
     ],
     "suggestions": [
-        "General improvement suggestions that don't fit specific issues"
+        "Detailed improvement suggestions with specific examples and rationale"
     ]
 }}
 
 CRITICAL REQUIREMENTS:
 - Return ONLY the JSON object - no explanatory text before or after
-- Do NOT wrap the JSON in markdown code blocks (no ``` characters)  
+- Do NOT wrap the JSON in markdown code blocks (no ``` characters)
 - Do NOT include any text outside the JSON structure
-- Be specific and actionable in your feedback
+- Find AT LEAST 3-5 meaningful issues per file (be thorough, not superficial)
+- Be EXTREMELY detailed in messages - explain the WHY and HOW
 - **MANDATORY**: Every issue MUST have both "line" and "file" fields filled
 - For "line": Count from the @@ +A,B @@ marker - A is starting line, count + lines from there
 - For "file": Always use exactly: {filename}
 - If you can't determine exact line numbers, use your best estimate from the + lines
-- Even for general issues, try to associate them with a specific line of new code
-- Prioritize critical security and bug issues as 'high' severity
-- Provide a concrete suggestion on how to fix each issue
+- Provide CONCRETE, ACTIONABLE suggestions with code examples
+- Include reasoning and impact for each issue
+- Prioritize issues properly: high (critical bugs/security), medium (quality/performance), low (style/minor)
+- Look for SUBTLE issues, not just obvious ones
+- Consider edge cases, error handling, and maintainability
 
 EXAMPLE LINE COUNTING:
 If you see "@@ -10,5 +10,8 @@", new lines start at line 10.
 If there are 3 + lines, they would be approximately lines 10, 11, 12.
-- Keep messages concise but informative
-- Ensure the JSON is valid and parseable""",
+
+DO NOT BE SUPERFICIAL. This is a professional code review requiring deep analysis.""",
         )
 
         # Summary generation prompt

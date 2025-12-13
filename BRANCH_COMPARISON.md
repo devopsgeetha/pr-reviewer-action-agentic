@@ -382,10 +382,10 @@ def _analyze_code_agentic(self, diff_data, github_service):
 **Workflow Change:**
 ```yaml
 # Before (main)
-uses: meetgeetha/pr-reviewer-action@main
+uses: devopsgeetha/pr-reviewer-action@main
 
 # After (AGENTIC_AI)
-uses: meetgeetha/pr-reviewer-action@AGENTIC_AI
+uses: devopsgeetha/pr-reviewer-action@AGENTIC_AI
 ```
 
 **No Breaking Changes**: The action maintains backward compatibility.

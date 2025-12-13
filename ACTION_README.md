@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
       
       - name: AI PR Review (Agentic)
-        uses: meetgeetha/pr-reviewer-action@AGENTIC_AI
+        uses: devopsgeetha/pr-reviewer-action@AGENTIC_AI
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -54,11 +54,11 @@ jobs:
 
 ```yaml
 - name: AI PR Review
-  uses: meetgeetha/pr-reviewer-action@main        # stable branch
+  uses: devopsgeetha/pr-reviewer-action@main        # stable branch
 # or:
-  uses: meetgeetha/pr-reviewer-action@AGENTIC_AI  # latest agentic branch
+  uses: devopsgeetha/pr-reviewer-action@AGENTIC_AI  # latest agentic branch
 # or:
-  uses: meetgeetha/pr-reviewer-action@agentic_ai_v2  # agentic release tag
+  uses: devopsgeetha/pr-reviewer-action@agentic_ai_v2  # agentic release tag
   with:
     openai_api_key: ${{ secrets.OPENAI_API_KEY }}
     github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -94,7 +94,7 @@ If you're getting a 403 error when the action tries to post comments:
 3. **Fork PRs**: If the PR is from a fork, `GITHUB_TOKEN` has limited permissions. You may need to use a Personal Access Token (PAT) with `repo` scope instead:
    ```yaml
    - name: AI PR Review
-     uses: meetgeetha/pr-reviewer-action@main
+     uses: devopsgeetha/pr-reviewer-action@main
      with:
        openai_api_key: ${{ secrets.OPENAI_API_KEY }}
        github_token: ${{ secrets.PAT_TOKEN }}  # Use PAT instead of GITHUB_TOKEN

@@ -22,7 +22,7 @@ class AgenticAgent:
         github_service=None,
         review_service=None,
         rag_service=None,
-        max_iterations: int = 10
+        max_iterations: int = 15
     ):
         self.github_service = github_service
         self.review_service = review_service
@@ -67,6 +67,7 @@ class AgenticAgent:
                     model=model,
                     temperature=temperature,
                     api_key=api_key,
+                    max_tokens=int(os.getenv('MAX_TOKENS', 8000)),
                 )
                 # Bind functions/tools - try different methods for compatibility
                 try:
@@ -81,6 +82,7 @@ class AgenticAgent:
                             model=model,
                             temperature=temperature,
                             api_key=api_key,
+                            max_tokens=int(os.getenv('MAX_TOKENS', 8000)),
                             model_kwargs={"functions": tools_schema}
                         )
             except Exception as e:
@@ -130,46 +132,75 @@ class AgenticAgent:
     
     def _create_system_prompt(self) -> str:
         """Create system prompt for the agent"""
-        return """You are an autonomous AI code review agent with access to specialized tools. Your goal is to thoroughly review pull requests by:
+        return """You are an elite autonomous AI code review agent with access to specialized tools. Your goal is to deliver COMPREHENSIVE, DETAILED pull request reviews by:
 
-1. **Planning**: Analyze the PR and create a review plan
-2. **Investigating**: Use available tools to gather information and analyze code
-3. **Reasoning**: Think through findings and prioritize issues
-4. **Iterating**: Refine your review based on what you discover
-5. **Finalizing**: Compile a comprehensive review with actionable feedback
+1. **Planning**: Thoroughly analyze the PR scope and create a detailed review strategy
+2. **Deep Investigation**: Aggressively use ALL relevant tools to gather complete information
+3. **Critical Analysis**: Think deeply through findings, identify root causes, and assess impact
+4. **Iteration**: Continue investigating until you have a COMPLETE understanding
+5. **Detailed Reporting**: Compile an extensive review with specific, actionable feedback
 
-**Available Tools (USE THESE!):**
+**Available Tools (YOU MUST USE THESE EXTENSIVELY!):**
 - analyze_code_file: Deep analysis of specific files for bugs, security, quality
-- get_file_content: Get full file contents for context
-- check_dependencies: Analyze package dependencies for security
-- analyze_security_patterns: Security vulnerability scanning (SQL injection, XSS, etc.)
-- check_code_style: Code style and best practices
-- get_related_files: Find related files that might be affected
-- search_codebase: Search for patterns or similar code
-- get_past_reviews: Learn from past reviews (RAG)
-- prioritize_issues: Organize and prioritize findings
+- get_file_content: Get full file contents for complete context
+- check_dependencies: Analyze package dependencies for security and compatibility
+- analyze_security_patterns: Comprehensive security vulnerability scanning
+- check_code_style: Code style, best practices, and maintainability analysis
+- get_related_files: Find all related files that might be affected
+- search_codebase: Search for patterns, similar code, or related implementations
+- get_past_reviews: Learn from past reviews to maintain consistency
+- prioritize_issues: Organize and prioritize all findings by severity and impact
 
-**Your Approach:**
-1. Start by analyzing 2-3 most critical changed files using analyze_code_file
-2. For security-sensitive code, use analyze_security_patterns
-3. If dependencies changed, use check_dependencies
-4. Use get_past_reviews to maintain consistency with previous feedback
-5. Prioritize findings with prioritize_issues before finalizing
+**MANDATORY Review Process:**
+1. **ALWAYS analyze EVERY changed file** using analyze_code_file - NO EXCEPTIONS
+2. **ALWAYS use analyze_security_patterns** for ANY code touching:
+   - Authentication/authorization
+   - Database queries
+   - API endpoints
+   - User input handling
+   - File operations
+   - External system interactions
+3. **ALWAYS use check_dependencies** if ANY package files are modified
+4. **ALWAYS use get_file_content** to understand the full context of changed files
+5. **ALWAYS use get_past_reviews** to maintain review consistency
+6. **ALWAYS use get_related_files** to understand the impact on the codebase
+7. **ALWAYS use prioritize_issues** before finalizing to organize findings
 
-**Decision Making:**
-- **ALWAYS** use analyze_code_file for any file with significant changes
-- **ALWAYS** use analyze_security_patterns for authentication, database, or API code
-- **ALWAYS** use check_dependencies if package files are modified
-- Use tools strategically but don't over-analyze trivial changes
-- When you have analyzed the key files and found issues, say "finalize" to complete
+**Quality Standards - Your Review MUST Include:**
+- Minimum 5-10 specific, actionable findings per file analyzed
+- Line-specific comments with exact line numbers
+- Detailed explanations of WHY each issue matters
+- Concrete code examples showing HOW to fix issues
+- Architecture and design feedback, not just syntax
+- Performance implications and optimization opportunities
+- Security implications with severity ratings
+- Testing recommendations
+- Documentation suggestions
 
-**Output Format:**
-After using tools and gathering findings, provide your final analysis with:
-- Specific issues found (severity, category, message, line number)
-- Actionable suggestions
-- Overall assessment
+**Deep Analysis Requirements:**
+- Look for subtle bugs, race conditions, edge cases
+- Identify code smells and anti-patterns
+- Assess error handling completeness
+- Evaluate input validation thoroughness
+- Check for proper logging and monitoring
+- Review exception handling patterns
+- Assess test coverage implications
+- Consider scalability and maintainability
 
-Be thorough but efficient. Focus on high-impact issues."""
+**DO NOT finalize until:**
+- You have analyzed EVERY changed file with analyze_code_file
+- You have performed security analysis on all relevant code
+- You have found AT LEAST 3-5 meaningful issues or suggestions
+- You have used at least 5-7 different tools
+- You can provide specific, line-level feedback
+
+**Output Requirements:**
+- DETAILED, SPECIFIC issues with exact file names and line numbers
+- Comprehensive suggestions with code examples
+- Thorough overall assessment with reasoning
+- Clear severity ratings (high/medium/low) with justifications
+
+Be THOROUGH and DETAILED. Quality over speed. This is a professional code review, not a quick scan."""
     
     def review_pr(self, diff_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -427,23 +458,21 @@ Be thorough but efficient. Focus on high-impact issues."""
             # Could reorganize review_result["issues"] here if needed
     
     def _should_finalize(self, response, review_result: Dict[str, Any]) -> bool:
-        """Determine if agent should finalize review"""
-        # Check if agent explicitly says it's done
-        content = response.content.lower() if response.content else ""
-        if any(phrase in content for phrase in ["finalize", "complete", "done", "finished", "summary"]):
-            return True
+        \"\"\"Determine if agent should finalize review - enforce quality thresholds\"\"\"
+        # Never finalize too early - enforce minimum quality standards
+        files_analyzed_count = len(self.memory.get_reasoning_chain())
+        tools_used_count = len(review_result.get("tools_used", []))
+        issues_found = len(review_result.get("issues", []))
+        suggestions_found = len(review_result.get("suggestions", []))
         
-        # Check if we have sufficient information
-        if len(review_result.get("issues", [])) > 0 or len(review_result.get("suggestions", [])) > 0:
-            # If we have findings and no pending tool calls, we can finalize
-            has_tool_calls = (
-                (hasattr(response, "tool_calls") and response.tool_calls) or
-                (hasattr(response, "additional_kwargs") and "tool_calls" in response.additional_kwargs)
-            )
-            if not has_tool_calls:
-                return True
+        # Minimum thresholds for a quality review
+        MIN_TOOLS_USED = 5  # Must use at least 5 different tools
+        MIN_FINDINGS = 3     # Must find at least 3 issues or suggestions
+        MIN_STEPS = 7        # Must take at least 7 reasoning steps
         
-        return False
+        # Don't finalize if we haven't met minimum quality standards
+        if tools_used_count < MIN_TOOLS_USED:
+            print(f\"   ⚠️  Not finalizing: Only {tools_used_count}/{MIN_TOOLS_USED} tools used\")\n            return False\n        \n        if (issues_found + suggestions_found) < MIN_FINDINGS:\n            print(f\"   ⚠️  Not finalizing: Only {issues_found + suggestions_found}/{MIN_FINDINGS} findings\")\n            return False\n        \n        if files_analyzed_count < MIN_STEPS:\n            print(f\"   ⚠️  Not finalizing: Only {files_analyzed_count}/{MIN_STEPS} steps taken\")\n            return False\n        \n        # Check if agent explicitly says it's done (and meets minimums)\n        content = response.content.lower() if response.content else \"\"\n        if any(phrase in content for phrase in [\"finalize\", \"complete\", \"done\", \"finished\", \"summary\"]):\n            print(f\"   ✅ Ready to finalize: {tools_used_count} tools, {issues_found + suggestions_found} findings\")\n            return True\n        \n        # Check if we have sufficient information and no pending tool calls\n        has_tool_calls = (\n            (hasattr(response, \"tool_calls\") and response.tool_calls) or\n            (hasattr(response, \"additional_kwargs\") and \"tool_calls\" in response.additional_kwargs)\n        )\n        \n        if not has_tool_calls and (issues_found > 5 or suggestions_found > 5):\n            # If we have substantial findings and no more tool calls, we can finalize\n            print(f\"   ✅ Auto-finalizing: {tools_used_count} tools, {issues_found + suggestions_found} findings\")\n            return True\n        \n        return False
     
     def _finalize_review(self, review_result: Dict[str, Any], diff_data: Dict[str, Any]) -> Dict[str, Any]:
         """Finalize the review by generating summary and calculating score"""

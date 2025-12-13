@@ -298,7 +298,7 @@ A custom GitHub Action that provides autonomous agentic AI code reviews with RAG
 
 This Action is **superior for teams that want**:
 - Advanced AI capabilities with agentic reasoning
-- Comprehensive security and code quality analysis
+- Comprehensive security and code quality analysis 
 - Learning from past reviews (RAG)
 - Full customization and control
 - Cost-effective, open-source solution

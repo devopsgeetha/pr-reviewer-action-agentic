@@ -101,11 +101,17 @@ CRITICAL REQUIREMENTS:
 - Do NOT wrap the JSON in markdown code blocks (no ``` characters)  
 - Do NOT include any text outside the JSON structure
 - Be specific and actionable in your feedback
-- ALWAYS include "line" numbers for issues found in + lines (added/changed code)
-- Use the actual line number in the final file, not the diff line number
-- ALWAYS include "file" field with the exact filename: {filename}
-- For each issue, provide a concrete suggestion on how to fix it
+- **MANDATORY**: Every issue MUST have both "line" and "file" fields filled
+- For "line": Count from the @@ +A,B @@ marker - A is starting line, count + lines from there
+- For "file": Always use exactly: {filename}
+- If you can't determine exact line numbers, use your best estimate from the + lines
+- Even for general issues, try to associate them with a specific line of new code
 - Prioritize critical security and bug issues as 'high' severity
+- Provide a concrete suggestion on how to fix each issue
+
+EXAMPLE LINE COUNTING:
+If you see "@@ -10,5 +10,8 @@", new lines start at line 10.
+If there are 3 + lines, they would be approximately lines 10, 11, 12.
 - Keep messages concise but informative
 - Ensure the JSON is valid and parseable""",
         )

@@ -610,6 +610,21 @@ class GitHubService:
                 for i, comment in enumerate(inline_comments, 1):
                     print(f"   Comment {i}: {comment['path']}:{comment['line']}")
                 
+            elif response.status_code == 422:
+                # Validation error - often means line numbers are invalid
+                error_data = response.json() if response.text else {}
+                error_msg = error_data.get("message", "Unprocessable Entity")
+                print(f"❌ GitHub API validation error (422): {error_msg}")
+                print(f"   This usually means line numbers are invalid or don't exist in the diff")
+                print(f"   Response: {response.text[:500]}")
+                
+                # Try to extract which comment failed
+                errors = error_data.get("errors", [])
+                for error in errors:
+                    print(f"   Error detail: {error}")
+                
+                raise Exception(f"GitHub API validation error: {error_msg}")
+                
             elif response.status_code == 403:
                 error_data = response.json() if response.text else {}
                 error_msg = error_data.get("message", "Forbidden")
@@ -708,9 +723,15 @@ class GitHubService:
                 if issue.get("category"):
                     comment_body += f"\n\n🏷️ **Category**: {issue['category']}"
                 
+                # Validate line number
+                line_num = int(issue["line"])
+                if line_num <= 0 or line_num > 10000:  # Reasonable bounds
+                    print(f"   Warning: Invalid line number {line_num} for {issue['file']}, skipping inline comment")
+                    continue
+                
                 comments.append({
                     "path": issue["file"],
-                    "line": int(issue["line"]),  # Ensure it's an integer
+                    "line": line_num,
                     "body": comment_body,
                 })
         
@@ -736,9 +757,15 @@ class GitHubService:
                 if issue.get("category"):
                     comment_body += f"\n\n🏷️ **Category**: {issue['category']}"
                 
+                # Validate line number  
+                line_num = int(issue["line"])
+                if line_num <= 0 or line_num > 10000:  # Reasonable bounds
+                    print(f"   Warning: Invalid line number {line_num} for {issue['file']}, skipping inline comment")
+                    continue
+                
                 comments.append({
                     "path": issue["file"],
-                    "line": int(issue["line"]),
+                    "line": line_num,
                     "body": comment_body,
                 })
 

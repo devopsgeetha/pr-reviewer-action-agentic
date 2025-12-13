@@ -550,8 +550,19 @@ class GitHubService:
             # Create inline comments from review results
             inline_comments = self._create_inline_comments(review_result)
             
+            # Debug: Show what we have in review_result
+            print(f"   Debug: file_issues count: {len(review_result.get('file_issues', []))}")
+            print(f"   Debug: general issues count: {len(review_result.get('issues', []))}")
+            
+            # Show sample of file_issues for debugging
+            if review_result.get('file_issues'):
+                for i, issue in enumerate(review_result['file_issues'][:2]):  # Show first 2
+                    print(f"   Debug file_issue {i+1}: file={issue.get('file')}, line={issue.get('line')}, message={issue.get('message', '')[:50]}...")
+            
             if not inline_comments:
                 print("ℹ️  No inline comments to post (no file-specific issues with line numbers)")
+                print("   This usually means the LLM didn't generate issues with specific line numbers.")
+                print("   The review will fall back to a general comment instead.")
                 return
                 
             print(f"   Found {len(inline_comments)} inline comments to post")

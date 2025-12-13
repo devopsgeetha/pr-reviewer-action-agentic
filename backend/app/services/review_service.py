@@ -198,17 +198,28 @@ class ReviewService:
             code=patch, filename=filename, language=language
         )
 
+        # Debug: Show what LLM returned
+        print(f"   Debug LLM analysis for {filename}: {len(analysis.get('issues', []))} total issues")
+        
         # Separate issues with line numbers from general issues
         general_issues = []
         file_issues = []
         
-        for issue in analysis.get("issues", []):
+        for i, issue in enumerate(analysis.get("issues", [])):
+            has_line = bool(issue.get("line"))
+            has_file = bool(issue.get("file"))
+            print(f"   Debug issue {i+1}: line={issue.get('line')}, file={issue.get('file')}, has_line={has_line}, has_file={has_file}")
+            
             if issue.get("line") and issue.get("file"):
                 # This is a line-specific issue
                 file_issues.append(issue)
+                print(f"   -> Added to file_issues")
             else:
                 # This is a general issue for the file
                 general_issues.append(issue)
+                print(f"   -> Added to general_issues")
+        
+        print(f"   Debug result: {len(general_issues)} general, {len(file_issues)} file-specific issues")
         
         return {
             "issues": general_issues,

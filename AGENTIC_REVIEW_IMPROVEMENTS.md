@@ -25,12 +25,12 @@ MAX_TOKENS = 2000
 
 # After
 OPENAI_TEMPERATURE = 0.5  # More creative, detailed analysis
-MAX_TOKENS = 4096          # 2x more output capacity (gpt-4-turbo-preview max)
+MAX_TOKENS = 8000          # 4x more output capacity (gpt-4o-mini supports up to 16k)
 ```
 
 **Impact**: Allows for much more detailed, comprehensive reviews with longer explanations.
 
-**Note**: `gpt-4-turbo-preview` supports a maximum of 4096 completion tokens. For even longer responses, consider using `gpt-4o` which supports up to 16k tokens.
+**Note**: Default model is now `gpt-4o-mini` which is cost-effective and supports up to 16384 completion tokens.
 
 ### 2. Increased Agent Iterations ([agentic_agent.py](backend/app/services/agentic_agent.py))
 
@@ -99,38 +99,50 @@ The default configuration is now optimized for detailed reviews:
 export OPENAI_API_KEY="your-key-here"
 
 # The system will automatically use:
+# - Model: gpt-4o-mini (cost-effective, supports 16k tokens)
 # - Temperature: 0.5
-# - Max Tokens: 4096 (gpt-4-turbo-preview limit)
+# - Max Tokens: 8000
 # - Max Iterations: 15
 ```
 
-### Option 2: Customize for Even More Detail
+### Option 2: Use More Powerful Model
 
-For extremely thorough reviews with longer responses, use gpt-4o:
+For even better analysis quality, use gpt-4o:
+
+```bash
+export OPENAI_API_KEY="your-key-here"
+export OPENAI_MODEL="gpt-4o"                # More powerful, same token limits
+export OPENAI_TEMPERATURE="0.5"
+export MAX_TOKENS="8000"
+```
+
+### Option 3: Maximum Detail with gpt-4o
+
+For extremely thorough reviews with longest possible responses:
 
 ```bash
 export OPENAI_API_KEY="your-key-here"
 export OPENAI_MODEL="gpt-4o"                # Supports up to 16k tokens
 export OPENAI_TEMPERATURE="0.6"             # Even more creative
-export MAX_TOKENS="8000"                    # Much longer responses
+export MAX_TOKENS="12000"                   # Very detailed responses
 ```
 
 ⚠️ **Warning**: Higher values = more API costs. Monitor usage carefully.
 
-**Model Limits:**
-- `gpt-4-turbo-preview`: Max 4096 completion tokens
-- `gpt-4o`: Max 16384 completion tokens
-- `gpt-4o-mini`: Max 16384 completion tokens (cheaper alternative)
+**Model Comparison:**
+- `gpt-4o-mini`: **Default** - Best cost/performance ratio, max 16k tokens, recommended
+- `gpt-4o`: More capable, max 16k tokens, higher cost
+- `gpt-4-turbo-preview`: Older model, max 4k tokens only
 
-### Option 3: Balance Cost and Quality
+### Option 4: Balance Cost and Quality
 
-For cost-conscious usage while maintaining quality:
+For very cost-conscious usage:
 
 ```bash
 export OPENAI_API_KEY="your-key-here"
-export OPENAI_MODEL="gpt-4-turbo-preview"
+export OPENAI_MODEL="gpt-4o-mini"           # Default, already cost-effective
 export OPENAI_TEMPERATURE="0.5"
-export MAX_TOKENS="3000"                    # Balanced within limits
+export MAX_TOKENS="5000"                    # Moderate length, lower cost
 ```
 
 ## Expected Improvements
@@ -177,17 +189,18 @@ The agent now provides detailed logging:
 
 ## Cost Considerations
 
-With these changes, expect:
-- **Token usage**: 2x higher per review (with gpt-4-turbo-preview)
+With these changes and gpt-4o-mini, expect:
+- **Token usage**: 4x higher per review compared to old config (but still cost-effective)
 - **API calls**: 2-3x more tool calls
 - **Review time**: 30-50% longer
+- **Cost**: ~80% cheaper than gpt-4-turbo-preview despite longer reviews
 
 **Recommendations**:
 1. Set OpenAI API spending limits
 2. Use for important PRs only (configure triggers)
 3. Monitor costs via OpenAI dashboard
-4. Consider using `gpt-4o-mini` (cheaper than gpt-4-turbo-preview, same token limits)
-5. For very detailed reviews with longer output, use `gpt-4o` (supports 16k tokens)
+4. `gpt-4o-mini` is already the most cost-effective option
+5. For critical PRs requiring highest quality, upgrade to `gpt-4o`
 
 ## Testing the Changes
 
@@ -228,41 +241,27 @@ With these changes, expect:
 
 ### Reviews Too Long/Expensive
 
-1. **Reduce MAX_TOKENS** (stay within model limits):
+1. **Reduce MAX_TOKENS** (gpt-4o-mini supports up to 16k):
    ```bash
-   # For gpt-4-turbo-preview (max 4096)
-   export MAX_TOKENS="3000"
-   
-   # For gpt-4o (max 16384)
-   export MAX_TOKENS="8000"
+   export MAX_TOKENS="5000"  # Moderate length
    ```
 
 2. **Lower max iterations**:
    Edit `agentic_agent.py`: `max_iterations: int = 12`
 
-3. **Use cheaper models**:
-   ```bash
-   # Cheaper but still capable
-   export OPENAI_MODEL="gpt-4o-mini"  # Supports 16k tokens, much cheaper
-   
-   # Or even cheaper (may reduce quality)
-   export OPENAI_MODEL="gpt-3.5-turbo"  # Max 4096 tokens
-   ```
+3. **Already using the cheapest capable model** (`gpt-4o-mini`)
 
 ### Token Limit Errors
 
 If you see "max_tokens is too large" errors:
 
 1. **Check your model's limits**:
-   - `gpt-4-turbo-preview`: Max 4096 tokens
+   - `gpt-4o-mini`: Max 16384 tokens ✅ (default)
    - `gpt-4o`: Max 16384 tokens
-   - `gpt-4o-mini`: Max 16384 tokens
+   - `gpt-4-turbo-preview`: Max 4096 tokens
    - `gpt-3.5-turbo`: Max 4096 tokens
 
-2. **Adjust MAX_TOKENS** accordingly:
-   ```bash
-   export MAX_TOKENS="4096"  # Safe for most models
-   ```
+2. **Current default (8000) is safe for gpt-4o-mini and gpt-4o**
 
 ### Agent Times Out
 

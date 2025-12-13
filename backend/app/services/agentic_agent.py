@@ -56,7 +56,7 @@ class AgenticAgent:
         """Initialize LLM with function calling support"""
         import os
         api_key = os.getenv("OPENAI_API_KEY")
-        model = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
+        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         temperature = float(os.getenv("OPENAI_TEMPERATURE", 0.3))
         
         if api_key:
@@ -458,7 +458,7 @@ Be THOROUGH and DETAILED. Quality over speed. This is a professional code review
             # Could reorganize review_result["issues"] here if needed
     
     def _should_finalize(self, response, review_result: Dict[str, Any]) -> bool:
-        \"\"\"Determine if agent should finalize review - enforce quality thresholds\"\"\"
+        """Determine if agent should finalize review - enforce quality thresholds"""
         # Never finalize too early - enforce minimum quality standards
         files_analyzed_count = len(self.memory.get_reasoning_chain())
         tools_used_count = len(review_result.get("tools_used", []))
@@ -472,7 +472,35 @@ Be THOROUGH and DETAILED. Quality over speed. This is a professional code review
         
         # Don't finalize if we haven't met minimum quality standards
         if tools_used_count < MIN_TOOLS_USED:
-            print(f\"   ⚠️  Not finalizing: Only {tools_used_count}/{MIN_TOOLS_USED} tools used\")\n            return False\n        \n        if (issues_found + suggestions_found) < MIN_FINDINGS:\n            print(f\"   ⚠️  Not finalizing: Only {issues_found + suggestions_found}/{MIN_FINDINGS} findings\")\n            return False\n        \n        if files_analyzed_count < MIN_STEPS:\n            print(f\"   ⚠️  Not finalizing: Only {files_analyzed_count}/{MIN_STEPS} steps taken\")\n            return False\n        \n        # Check if agent explicitly says it's done (and meets minimums)\n        content = response.content.lower() if response.content else \"\"\n        if any(phrase in content for phrase in [\"finalize\", \"complete\", \"done\", \"finished\", \"summary\"]):\n            print(f\"   ✅ Ready to finalize: {tools_used_count} tools, {issues_found + suggestions_found} findings\")\n            return True\n        \n        # Check if we have sufficient information and no pending tool calls\n        has_tool_calls = (\n            (hasattr(response, \"tool_calls\") and response.tool_calls) or\n            (hasattr(response, \"additional_kwargs\") and \"tool_calls\" in response.additional_kwargs)\n        )\n        \n        if not has_tool_calls and (issues_found > 5 or suggestions_found > 5):\n            # If we have substantial findings and no more tool calls, we can finalize\n            print(f\"   ✅ Auto-finalizing: {tools_used_count} tools, {issues_found + suggestions_found} findings\")\n            return True\n        \n        return False
+            print(f"   ⚠️  Not finalizing: Only {tools_used_count}/{MIN_TOOLS_USED} tools used")
+            return False
+        
+        if (issues_found + suggestions_found) < MIN_FINDINGS:
+            print(f"   ⚠️  Not finalizing: Only {issues_found + suggestions_found}/{MIN_FINDINGS} findings")
+            return False
+        
+        if files_analyzed_count < MIN_STEPS:
+            print(f"   ⚠️  Not finalizing: Only {files_analyzed_count}/{MIN_STEPS} steps taken")
+            return False
+        
+        # Check if agent explicitly says it's done (and meets minimums)
+        content = response.content.lower() if response.content else ""
+        if any(phrase in content for phrase in ["finalize", "complete", "done", "finished", "summary"]):
+            print(f"   ✅ Ready to finalize: {tools_used_count} tools, {issues_found + suggestions_found} findings")
+            return True
+        
+        # Check if we have sufficient information and no pending tool calls
+        has_tool_calls = (
+            (hasattr(response, "tool_calls") and response.tool_calls) or
+            (hasattr(response, "additional_kwargs") and "tool_calls" in response.additional_kwargs)
+        )
+        
+        if not has_tool_calls and (issues_found > 5 or suggestions_found > 5):
+            # If we have substantial findings and no more tool calls, we can finalize
+            print(f"   ✅ Auto-finalizing: {tools_used_count} tools, {issues_found + suggestions_found} findings")
+            return True
+        
+        return False
     
     def _finalize_review(self, review_result: Dict[str, Any], diff_data: Dict[str, Any]) -> Dict[str, Any]:
         """Finalize the review by generating summary and calculating score"""

@@ -28,23 +28,11 @@ class MCPFilesystemClient:
     
     def _connect(self):
         """Connect to MCP filesystem server"""
-        try:
-            # MCP filesystem server should be running on stdio
-            # Started by action-entrypoint.sh
-            server_params = StdioServerParameters(
-                command="npx",
-                args=["-y", "@modelcontextprotocol/server-filesystem", self.root_path],
-                env=None
-            )
-            
-            # Create client session
-            self.session = ClientSession(server_params)
-            print(f"✅ Connected to MCP Filesystem Server (root: {self.root_path})")
-        except Exception as e:
-            print(f"⚠️  Could not connect to MCP Filesystem Server: {e}")
-            print("   Falling back to direct file operations")
-            self.enabled = False
-            self.session = None
+        # MCP connection is currently disabled due to library version mismatch
+        # Falling back to direct filesystem operations
+        self.enabled = False
+        self.session = None
+        print(f"ℹ️  MCP Filesystem disabled, using direct file operations (root: {self.root_path})")
     
     async def read_file(self, file_path: str) -> Optional[str]:
         """

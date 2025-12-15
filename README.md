@@ -43,19 +43,21 @@
 Create `.github/workflows/pr-review.yml` in your repository:
 
 ```yaml
-name: AI Code Review
+name: Agentic PR Review
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 jobs:
   review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
       issues: write
+      checks: read
     steps:
       - name: Checkout PR code
         uses: actions/checkout@v3
@@ -64,13 +66,13 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           fetch-depth: 0
       
-      - name: AI PR Review
-        uses: devopsgeetha/pr-reviewer-action@agentic_ai_v2
+      - name: Agentic PR Review
+        uses: devopsgeetha/pr-reviewer-action-agentic@main
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          openai_model: gpt-4-turbo-preview
-
+          openai_model: gpt-4o-mini  # Recommended for agentic mode
+          comment_mode: inline
 ```
 
 > **Branch vs tag**: `AGENTIC_AI` is the live branch for the agentic workflow. Use `agentic_ai_v2` if you prefer the tagged release snapshot. Use `main` for the stable non-agentic reviewer.

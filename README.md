@@ -65,7 +65,7 @@ jobs:
           fetch-depth: 0
       
       - name: AI PR Review
-        uses: meetgeetha/pr-reviewer-action@agentic_ai_v2
+        uses: devopsgeetha/pr-reviewer-action@agentic_ai_v2
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
